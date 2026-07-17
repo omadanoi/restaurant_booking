@@ -54,6 +54,16 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
     await eng.dispose()
 
 
+# Same cross-loop concern as the engine: the Redis client singleton must not
+# outlive the event loop it was created in.
+@pytest_asyncio.fixture(autouse=True)
+async def _reset_redis_client() -> AsyncGenerator[None, None]:
+    yield
+    from app.core.redis import close_redis
+
+    await close_redis()
+
+
 @pytest_asyncio.fixture
 async def db_session(engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
     """One test = one outer transaction + a SAVEPOINT that's restarted after
