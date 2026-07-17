@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -6,14 +8,28 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.logging import configure_logging, get_logger
+from app.core.redis import close_redis
+from app.realtime.manager import manager
 
 settings = get_settings()
 configure_logging()
 logger = get_logger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await manager.start()  # Redis pub/sub listener for websocket fan-out
+    yield
+    await manager.stop()
+    await close_redis()
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json")
+    app = FastAPI(
+        title=settings.PROJECT_NAME,
+        openapi_url=f"{settings.API_V1_STR}/openapi.json",
+        lifespan=lifespan,
+    )
 
     app.add_middleware(
         CORSMiddleware,

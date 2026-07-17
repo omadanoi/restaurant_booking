@@ -8,6 +8,7 @@ from app.api.v1.endpoints import (
     restaurants,
     tables,
     users,
+    ws,
 )
 
 api_router = APIRouter()
@@ -18,3 +19,4 @@ api_router.include_router(restaurants.router)
 api_router.include_router(floors.router)
 api_router.include_router(tables.router)
 api_router.include_router(reservations.router)
+api_router.include_router(ws.router)
