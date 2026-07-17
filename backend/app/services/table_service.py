@@ -7,6 +7,7 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.logging import get_logger
 from app.models import Table, TableStatusLog, User
 from app.models.enums import TableStatus
+from app.realtime.events import queue_event
 from app.repositories.floor import FloorRepository
 from app.repositories.table import TableRepository
 from app.schemas.table import TableCreate, TableUpdate
@@ -46,11 +47,29 @@ class TableService:
             if floor is None or floor.restaurant_id != restaurant_id:
                 raise NotFoundError("Floor not found in this restaurant.")
         try:
-            return await self.tables.update(table, updates)
+            table = await self.tables.update(table, updates)
         except IntegrityError as exc:
             if "uq_tables_restaurant_number" in str(exc.orig):
                 raise ConflictError("A table with this number already exists.") from exc
             raise
+        # Live layout editing: broadcast geometry/capacity changes so other
+        # staff dashboards (and the manager editor) update in place.
+        queue_event(
+            self.db,
+            table.restaurant_id,
+            "table.updated",
+            {
+                "table_id": str(table.id),
+                "floor_id": str(table.floor_id),
+                "x": table.x,
+                "y": table.y,
+                "rotation": table.rotation,
+                "shape": table.shape.value,
+                "capacity": table.capacity,
+                "is_active": table.is_active,
+            },
+        )
+        return table
 
     async def deactivate(self, restaurant_id: uuid.UUID, table_id: uuid.UUID) -> Table:
         """Soft delete: keeps reservation history intact."""
@@ -81,6 +100,16 @@ class TableService:
             )
         )
         await self.db.flush()
+        queue_event(
+            self.db,
+            table.restaurant_id,
+            "table.status_changed",
+            {
+                "table_id": str(table.id),
+                "old_status": old_status.value,
+                "new_status": new_status.value,
+            },
+        )
         logger.info(
             "table_status_changed",
             extra={

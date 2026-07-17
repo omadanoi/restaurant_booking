@@ -14,6 +14,7 @@ from app.core.exceptions import (
 from app.core.logging import get_logger
 from app.models import AuditLog, Reservation, Restaurant, Table, User
 from app.models.enums import ReservationStatus, UserRole
+from app.realtime.events import queue_event
 from app.repositories.reservation import ReservationRepository
 from app.repositories.restaurant import RestaurantRepository
 from app.repositories.table import TableRepository
@@ -92,6 +93,7 @@ class ReservationService:
             raise
 
         await self._audit(customer, "reservation.created", reservation)
+        self._queue_reservation_event("reservation.created", reservation)
         logger.info(
             "reservation_created",
             extra={
@@ -154,6 +156,7 @@ class ReservationService:
             raise
 
         await self._audit(actor, "reservation.modified", reservation, before=before)
+        self._queue_reservation_event("reservation.updated", reservation)
         return reservation
 
     async def cancel(self, actor: User, reservation_id: uuid.UUID) -> Reservation:
@@ -167,6 +170,7 @@ class ReservationService:
             {"status": ReservationStatus.CANCELLED, "cancelled_at": datetime.now(timezone.utc)},
         )
         await self._audit(actor, "reservation.cancelled", reservation, before=before)
+        self._queue_reservation_event("reservation.cancelled", reservation)
         logger.info(
             "reservation_cancelled",
             extra={"extra_fields": {"reservation_id": str(reservation.id)}},
@@ -195,6 +199,7 @@ class ReservationService:
             updates["cancelled_at"] = datetime.now(timezone.utc)
         reservation = await self.reservations.update(reservation, updates)
         await self._audit(staff, f"reservation.{new_status.value}", reservation, before=before)
+        self._queue_reservation_event("reservation.updated", reservation)
         return reservation
 
     # -- queries --------------------------------------------------------------
@@ -309,6 +314,21 @@ class ReservationService:
             raise ValidationError(
                 f"Reservation must be within opening hours ({opens}–{closes} local time)."
             )
+
+    def _queue_reservation_event(self, event_type: str, reservation: Reservation) -> None:
+        """No personal data in the payload — see app/realtime/events.py."""
+        queue_event(
+            self.db,
+            reservation.restaurant_id,
+            event_type,
+            {
+                "reservation_id": str(reservation.id),
+                "table_id": str(reservation.table_id),
+                "start_time": reservation.start_time.isoformat(),
+                "end_time": reservation.end_time.isoformat(),
+                "status": reservation.status.value,
+            },
+        )
 
     def _snapshot(self, reservation: Reservation) -> dict:
         return {

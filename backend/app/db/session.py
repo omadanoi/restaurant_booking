@@ -17,12 +17,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Request-scoped session. Commits once on success, rolls back on error.
 
     Repositories only flush; this is the single point where a multi-repository
-    use-case becomes one atomic transaction.
+    use-case becomes one atomic transaction. Realtime events queued during
+    the request (app.realtime.events) are published only after the commit
+    succeeds — and discarded on rollback.
     """
+    from app.realtime.events import discard_queued, publish_queued
+
     async with AsyncSessionLocal() as session:
         try:
             yield session
             await session.commit()
         except Exception:
+            discard_queued(session)
             await session.rollback()
             raise
+        await publish_queued(session)
