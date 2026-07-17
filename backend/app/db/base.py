@@ -11,6 +11,7 @@ from app.models import (  # noqa: F401
     Holiday,
     Notification,
     OpeningHours,
+    RefreshToken,
     Reservation,
     Restaurant,
     Table,
