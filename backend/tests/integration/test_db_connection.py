@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import text
@@ -74,7 +74,7 @@ async def test_exclude_constraint_rejects_overlapping_reservations(
     table = await _seed_table(db_session)
     customer = await _make_customer(db_session)
 
-    base = datetime(2026, 8, 1, 18, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 8, 1, 18, 0, tzinfo=UTC)
 
     first = Reservation(
         restaurant_id=table.restaurant_id,
@@ -114,7 +114,7 @@ async def test_exclude_constraint_allows_back_to_back_reservations(
     table = await _seed_table(db_session)
     customer = await _make_customer(db_session)
 
-    base = datetime(2026, 8, 1, 18, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 8, 1, 18, 0, tzinfo=UTC)
 
     first = Reservation(
         restaurant_id=table.restaurant_id,
@@ -144,7 +144,7 @@ async def test_exclude_constraint_ignores_cancelled_reservations(
     table = await _seed_table(db_session)
     customer = await _make_customer(db_session)
 
-    base = datetime(2026, 8, 1, 18, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 8, 1, 18, 0, tzinfo=UTC)
 
     cancelled = Reservation(
         restaurant_id=table.restaurant_id,

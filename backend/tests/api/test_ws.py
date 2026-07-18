@@ -20,19 +20,21 @@ settings = get_settings()
 
 
 def test_ws_rejects_garbage_token() -> None:
-    with TestClient(app) as client:
-        with pytest.raises(WebSocketDisconnect) as exc_info:
-            with client.websocket_connect(
-                f"{settings.API_V1_STR}/ws/restaurants/{uuid.uuid4()}?token=garbage"
-            ) as ws:
-                ws.receive_text()
-        assert exc_info.value.code == 1008
+    with (
+        TestClient(app) as client,
+        pytest.raises(WebSocketDisconnect) as exc_info,
+        client.websocket_connect(
+            f"{settings.API_V1_STR}/ws/restaurants/{uuid.uuid4()}?token=garbage"
+        ) as ws,
+    ):
+        ws.receive_text()
+    assert exc_info.value.code == 1008
 
 
 def test_ws_requires_token_param() -> None:
-    with TestClient(app) as client:
-        with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(
-                f"{settings.API_V1_STR}/ws/restaurants/{uuid.uuid4()}"
-            ) as ws:
-                ws.receive_text()
+    with (
+        TestClient(app) as client,
+        pytest.raises(WebSocketDisconnect),
+        client.websocket_connect(f"{settings.API_V1_STR}/ws/restaurants/{uuid.uuid4()}") as ws,
+    ):
+        ws.receive_text()

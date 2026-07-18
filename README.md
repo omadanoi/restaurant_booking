@@ -1,12 +1,20 @@
 # Restaurant Reservation & Table Management Platform
 
+[![Backend CI](https://github.com/omadanoi/restaurant_booking/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/omadanoi/restaurant_booking/actions/workflows/backend-ci.yml)
+[![Frontend CI](https://github.com/omadanoi/restaurant_booking/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/omadanoi/restaurant_booking/actions/workflows/frontend-ci.yml)
+[![E2E](https://github.com/omadanoi/restaurant_booking/actions/workflows/e2e.yml/badge.svg)](https://github.com/omadanoi/restaurant_booking/actions/workflows/e2e.yml)
+
 A production-style full-stack reservation and table management system for restaurants, built to demonstrate backend engineering, systems design, and QA automation practices.
 
 See [`docs/architecture.md`](docs/architecture.md) for the full architecture writeup and [`docs/adr/`](docs/adr/) for key design decisions.
 
-## Status
+## Testing
 
-**Phase 1 of 7** — database schema, migrations, and project scaffolding. See the roadmap in `docs/architecture.md` for what's next.
+- **Backend** (`cd backend && pytest`): 79 tests — unit, API, and integration, including DB-level EXCLUDE-constraint tests and true concurrent-booking races (2-way and 5-way) against real Postgres.
+- **E2E** (`cd frontend && npx playwright test`): 9 browser tests covering registration, login failures, the full booking flow on the floor plan, opening-hours rejection, role guards, manager drag-and-drop persistence, and a live WebSocket update across two sessions. Requires the seeded demo data (`python -m scripts.seed`).
+- **Lint**: `ruff check .` in `backend/`.
+
+All three run in GitHub Actions on every push and pull request.
 
 ## Stack
 

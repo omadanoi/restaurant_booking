@@ -143,4 +143,4 @@ class RestaurantService:
         try:
             ZoneInfo(tz)
         except (ZoneInfoNotFoundError, ValueError):
-            raise ValidationError(f"Unknown timezone: {tz}")
+            raise ValidationError(f"Unknown timezone: {tz}") from None

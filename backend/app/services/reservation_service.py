@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.exc import IntegrityError
@@ -18,7 +18,6 @@ from app.models.enums import (
     NotificationStatus,
     NotificationType,
     ReservationStatus,
-    UserRole,
 )
 from app.realtime.events import queue_event
 from app.repositories.reservation import ReservationRepository
@@ -179,7 +178,7 @@ class ReservationService:
         before = self._snapshot(reservation)
         reservation = await self.reservations.update(
             reservation,
-            {"status": ReservationStatus.CANCELLED, "cancelled_at": datetime.now(timezone.utc)},
+            {"status": ReservationStatus.CANCELLED, "cancelled_at": datetime.now(UTC)},
         )
         await self._audit(actor, "reservation.cancelled", reservation, before=before)
         self._queue_reservation_event("reservation.cancelled", reservation)
@@ -209,7 +208,7 @@ class ReservationService:
         if new_status == ReservationStatus.CONFIRMED:
             updates["confirmed_by"] = staff.id
         if new_status == ReservationStatus.CANCELLED:
-            updates["cancelled_at"] = datetime.now(timezone.utc)
+            updates["cancelled_at"] = datetime.now(UTC)
         reservation = await self.reservations.update(reservation, updates)
         await self._audit(staff, f"reservation.{new_status.value}", reservation, before=before)
         self._queue_reservation_event("reservation.updated", reservation)
@@ -244,15 +243,13 @@ class ReservationService:
         taken = await self.reservations.reserved_table_ids(restaurant_id, start_time, end_time)
 
         def fits(t: Table) -> bool:
-            if t.id in taken or t.capacity < party_size:
-                return False
-            if t.min_capacity is not None and party_size < t.min_capacity:
-                return False
-            if indoor is not None and t.is_indoor != indoor:
-                return False
-            if accessible is not None and t.is_accessible != accessible:
-                return False
-            return True
+            return (
+                t.id not in taken
+                and t.capacity >= party_size
+                and (t.min_capacity is None or party_size >= t.min_capacity)
+                and (indoor is None or t.is_indoor == indoor)
+                and (accessible is None or t.is_accessible == accessible)
+            )
 
         return [t for t in tables if fits(t)]
 
@@ -271,7 +268,7 @@ class ReservationService:
             await check_restaurant_staff(self.db, actor, reservation.restaurant_id)
         except PermissionDeniedError:
             # Don't leak existence of other people's reservations.
-            raise NotFoundError("Reservation not found.")
+            raise NotFoundError("Reservation not found.") from None
         return reservation
 
     def _validate_party_size(self, table: Table, party_size: int) -> None:
@@ -285,7 +282,7 @@ class ReservationService:
             )
 
     def _validate_not_in_past(self, start_time: datetime) -> None:
-        if start_time <= datetime.now(timezone.utc):
+        if start_time <= datetime.now(UTC):
             raise ValidationError("Reservations must start in the future.")
 
     async def _validate_within_opening_hours(

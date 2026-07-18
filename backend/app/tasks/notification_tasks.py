@@ -7,7 +7,7 @@ delivers them via the configured NotificationSender. Each Celery task is a
 thin wrapper around a testable plain function that takes a Session.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
@@ -58,7 +58,7 @@ def dispatch_pending(session: Session, sender: NotificationSender, limit: int = 
             )
         else:
             notification.status = NotificationStatus.SENT
-            notification.sent_at = datetime.now(timezone.utc)
+            notification.sent_at = datetime.now(UTC)
             sent += 1
     session.flush()
     return sent
@@ -69,7 +69,7 @@ def schedule_reminders(session: Session, *, now: datetime | None = None) -> int:
     starting within REMINDER_LEAD_HOURS. Idempotent: a reservation gets at
     most one reminder (checked via existing reminder rows).
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     horizon = now + timedelta(hours=get_settings().REMINDER_LEAD_HOURS)
 
     already_reminded = select(Notification.reservation_id).where(
@@ -113,7 +113,7 @@ def cleanup_refresh_tokens(session: Session, *, now: datetime | None = None) -> 
     """Deletes refresh tokens that expired (or were revoked) over 30 days
     ago — they can never be used again and only accumulate.
     """
-    cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=30)
+    cutoff = (now or datetime.now(UTC)) - timedelta(days=30)
     result = session.execute(
         delete(RefreshToken).where(
             or_(RefreshToken.expires_at < cutoff, RefreshToken.revoked_at < cutoff)

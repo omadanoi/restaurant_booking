@@ -9,10 +9,10 @@ commits, so it seeds its own data and cleans up after itself.
 
 import asyncio
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.exceptions import OverlappingReservationError
 from app.core.security import hash_password
@@ -68,7 +68,7 @@ async def test_concurrent_bookings_only_one_wins() -> None:
         ids["c1"], ids["c2"] = customers[0].id, customers[1].id
         await db.commit()
 
-    start = (datetime.now(timezone.utc) + timedelta(days=3)).replace(
+    start = (datetime.now(UTC) + timedelta(days=3)).replace(
         hour=18, minute=0, second=0, microsecond=0
     )
 
@@ -169,7 +169,7 @@ async def test_many_concurrent_bookings_only_one_wins() -> None:
         ids["table"] = table.id
         await db.commit()
 
-    start = (datetime.now(timezone.utc) + timedelta(days=4)).replace(
+    start = (datetime.now(UTC) + timedelta(days=4)).replace(
         hour=19, minute=0, second=0, microsecond=0
     )
 

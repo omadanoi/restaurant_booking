@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -93,7 +93,7 @@ class AuthService:
             )
             raise AuthenticationError("Invalid refresh token.")
 
-        if token.expires_at <= datetime.now(timezone.utc):
+        if token.expires_at <= datetime.now(UTC):
             raise AuthenticationError("Refresh token has expired.")
 
         user = await self.users.get(token.user_id)
@@ -125,7 +125,7 @@ class AuthService:
             {
                 "user_id": user.id,
                 "token_hash": hash_refresh_token(raw_refresh),
-                "expires_at": datetime.now(timezone.utc)
+                "expires_at": datetime.now(UTC)
                 + timedelta(days=self.settings.REFRESH_TOKEN_EXPIRE_DAYS),
                 "user_agent": user_agent,
             }

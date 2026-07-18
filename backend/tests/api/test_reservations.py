@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from httpx import AsyncClient
 
@@ -6,7 +6,7 @@ from tests.api.conftest import API, Seeded
 
 
 def _window(days_ahead: int = 7, hour: int = 18, duration_hours: float = 1.5) -> tuple[str, str]:
-    start = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).replace(
+    start = (datetime.now(UTC) + timedelta(days=days_ahead)).replace(
         hour=hour, minute=0, second=0, microsecond=0
     )
     end = start + timedelta(hours=duration_hours)
@@ -72,8 +72,8 @@ async def test_booking_validations(client: AsyncClient, seeded: Seeded, login) -
     assert resp.status_code == 422
 
     # In the past.
-    past_start = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-    past_end = (datetime.now(timezone.utc) - timedelta(days=1, hours=-2)).isoformat()
+    past_start = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+    past_end = (datetime.now(UTC) - timedelta(days=1, hours=-2)).isoformat()
     resp = await client.post(
         f"{API}/reservations",
         json={"table_id": table_id, "start_time": past_start, "end_time": past_end, "party_size": 2},

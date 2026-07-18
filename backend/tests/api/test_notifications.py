@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from httpx import AsyncClient
 
@@ -6,7 +6,7 @@ from tests.api.conftest import API, Seeded
 
 
 async def _book(client: AsyncClient, headers: dict, table_id) -> dict:
-    start = (datetime.now(timezone.utc) + timedelta(days=7)).replace(
+    start = (datetime.now(UTC) + timedelta(days=7)).replace(
         hour=18, minute=0, second=0, microsecond=0
     )
     resp = await client.post(

@@ -1,0 +1,29 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "C4",  # comprehensions
+    "SIM", # simplify
+]
+ignore = [
+    "B008", # function call in argument defaults — FastAPI's Depends() pattern
+    "E501", # line length handled pragmatically; long strings/messages allowed
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Imported-but-unused re-exports are the point of these modules.
+"app/db/base.py" = ["F401"]
+"app/api/deps.py" = ["F401"]
+"app/models/__init__.py" = ["F401"]
+# SQLAlchemy resolves string relationship annotations (Mapped["Restaurant"])
+# through its registry at runtime — F821 is a false positive there.
+"app/models/*.py" = ["F821"]

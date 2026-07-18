@@ -30,7 +30,7 @@ async def get_current_user(
     try:
         user_id = uuid.UUID(payload["sub"])
     except (KeyError, ValueError):
-        raise AuthenticationError("Invalid token.")
+        raise AuthenticationError("Invalid token.") from None
 
     user = await db.get(User, user_id)
     if user is None or not user.is_active:

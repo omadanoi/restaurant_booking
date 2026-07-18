@@ -22,6 +22,8 @@ node_modules/
 dist/
 build/
 .vite/
+test-results/
+playwright-report/
 
 # IDE
 .vscode/

@@ -1,7 +1,7 @@
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
@@ -9,7 +9,6 @@ import jwt
 
 from app.core.config import get_settings
 from app.core.exceptions import AuthenticationError
-
 
 # --- Password hashing -------------------------------------------------------
 
@@ -29,7 +28,7 @@ def verify_password(password: str, hashed: str) -> bool:
 
 def create_access_token(user_id: uuid.UUID, role: str) -> str:
     settings = get_settings()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload: dict[str, Any] = {
         "sub": str(user_id),
         "role": role,
@@ -46,9 +45,9 @@ def decode_access_token(token: str) -> dict[str, Any]:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except jwt.ExpiredSignatureError:
-        raise AuthenticationError("Token has expired.")
+        raise AuthenticationError("Token has expired.") from None
     except jwt.InvalidTokenError:
-        raise AuthenticationError("Invalid token.")
+        raise AuthenticationError("Invalid token.") from None
     if payload.get("type") != "access":
         raise AuthenticationError("Invalid token type.")
     return payload

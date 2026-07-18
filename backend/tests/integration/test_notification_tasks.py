@@ -5,7 +5,7 @@ test database, so no broker or worker is needed.
 
 import uuid
 from collections.abc import Generator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine, select
@@ -88,7 +88,7 @@ def _seed_reservation(session: Session, *, starts_in: timedelta) -> Reservation:
     session.add_all([table, customer])
     session.flush()
 
-    start = datetime.now(timezone.utc) + starts_in
+    start = datetime.now(UTC) + starts_in
     reservation = Reservation(
         restaurant_id=restaurant.id,
         table_id=table.id,
@@ -186,7 +186,7 @@ def test_cleanup_removes_only_stale_tokens(sync_session: Session) -> None:
     sync_session.add(user)
     sync_session.flush()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     def token(suffix: str, *, expires: datetime, revoked: datetime | None = None) -> RefreshToken:
         t = RefreshToken(
