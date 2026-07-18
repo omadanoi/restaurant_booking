@@ -12,8 +12,14 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.core.logging import get_logger
-from app.models import AuditLog, Reservation, Restaurant, Table, User
-from app.models.enums import ReservationStatus, UserRole
+from app.models import AuditLog, Notification, Reservation, Restaurant, Table, User
+from app.models.enums import (
+    NotificationChannel,
+    NotificationStatus,
+    NotificationType,
+    ReservationStatus,
+    UserRole,
+)
 from app.realtime.events import queue_event
 from app.repositories.reservation import ReservationRepository
 from app.repositories.restaurant import RestaurantRepository
@@ -94,6 +100,7 @@ class ReservationService:
 
         await self._audit(customer, "reservation.created", reservation)
         self._queue_reservation_event("reservation.created", reservation)
+        self._queue_notification(NotificationType.RESERVATION_CONFIRMED, reservation)
         logger.info(
             "reservation_created",
             extra={
@@ -157,6 +164,11 @@ class ReservationService:
 
         await self._audit(actor, "reservation.modified", reservation, before=before)
         self._queue_reservation_event("reservation.updated", reservation)
+        # Update notices reuse the confirmation type with an event marker —
+        # the enum stays small and the payload carries the nuance.
+        self._queue_notification(
+            NotificationType.RESERVATION_CONFIRMED, reservation, event="updated"
+        )
         return reservation
 
     async def cancel(self, actor: User, reservation_id: uuid.UUID) -> Reservation:
@@ -171,6 +183,7 @@ class ReservationService:
         )
         await self._audit(actor, "reservation.cancelled", reservation, before=before)
         self._queue_reservation_event("reservation.cancelled", reservation)
+        self._queue_notification(NotificationType.RESERVATION_CANCELLED, reservation)
         logger.info(
             "reservation_cancelled",
             extra={"extra_fields": {"reservation_id": str(reservation.id)}},
@@ -314,6 +327,34 @@ class ReservationService:
             raise ValidationError(
                 f"Reservation must be within opening hours ({opens}–{closes} local time)."
             )
+
+    def _queue_notification(
+        self, type_: NotificationType, reservation: Reservation, *, event: str | None = None
+    ) -> None:
+        """Inserts a pending Notification in the SAME transaction as the
+        domain change (transactional outbox): if the booking rolls back, no
+        notification exists; delivery happens via the Celery dispatcher.
+        """
+        payload = {
+            "reservation_id": str(reservation.id),
+            "start_time": reservation.start_time.isoformat(),
+            "end_time": reservation.end_time.isoformat(),
+            "party_size": reservation.party_size,
+            "status": reservation.status.value,
+        }
+        if event is not None:
+            payload["event"] = event
+        self.db.add(
+            Notification(
+                user_id=reservation.customer_id,
+                restaurant_id=reservation.restaurant_id,
+                reservation_id=reservation.id,
+                type=type_,
+                channel=NotificationChannel.IN_APP,
+                payload=payload,
+                status=NotificationStatus.PENDING,
+            )
+        )
 
     def _queue_reservation_event(self, event_type: str, reservation: Reservation) -> None:
         """No personal data in the payload — see app/realtime/events.py."""

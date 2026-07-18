@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     auth,
     floors,
     health,
+    notifications,
     reservations,
     restaurants,
     tables,
@@ -19,4 +20,5 @@ api_router.include_router(restaurants.router)
 api_router.include_router(floors.router)
 api_router.include_router(tables.router)
 api_router.include_router(reservations.router)
+api_router.include_router(notifications.router)
 api_router.include_router(ws.router)
