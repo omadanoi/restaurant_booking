@@ -23,6 +23,12 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # Notifications (Phase 5). "logged" writes structured logs + DB rows;
+    # a future real sender (e.g. "smtp") plugs in via the same setting
+    # without touching call sites (ADR 0003).
+    NOTIFICATION_SENDER: str = "logged"
+    REMINDER_LEAD_HOURS: int = 24
+
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
