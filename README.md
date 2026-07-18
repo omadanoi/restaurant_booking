@@ -45,6 +45,17 @@ pytest
 
 The API will be available at `http://localhost:8000`, with interactive docs at `http://localhost:8000/docs`.
 
+### Background jobs (notifications)
+
+Notifications use a transactional outbox: bookings insert `pending` rows, and Celery delivers them. Run the worker and scheduler in two extra terminals (from `backend/`, venv active):
+
+```bash
+celery -A app.tasks.celery_app worker -P solo -l info   # -P solo required on Windows
+celery -A app.tasks.celery_app beat -l info
+```
+
+The default `NOTIFICATION_SENDER=logged` "delivers" by writing structured logs and updating the notification row — swap in a real email/SMS sender later via that setting alone (see `docs/adr/0003-notification-strategy-pattern.md`). Check your feed at `GET /api/v1/notifications/me`.
+
 ## Repository Layout
 
 ```
