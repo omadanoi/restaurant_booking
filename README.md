@@ -45,6 +45,18 @@ pytest
 
 The API will be available at `http://localhost:8000`, with interactive docs at `http://localhost:8000/docs`.
 
+### Frontend (React + TypeScript + Vite)
+
+Requires Node.js 20+.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173` and sign in with a demo account (see `backend/scripts/seed.py`; password `Password123`): `customer@demo.com` books tables on the interactive floor plan, `waiter@demo.com` gets the live staff dashboard, `manager@demo.com` additionally gets the drag-and-drop floor editor, and `admin@demo.com` gets the admin panel.
+
 ### Background jobs (notifications)
 
 Notifications use a transactional outbox: bookings insert `pending` rows, and Celery delivers them. Run the worker and scheduler in two extra terminals (from `backend/`, venv active):
