@@ -14,6 +14,22 @@ class TableShape(str, enum.Enum):
     SQUARE = "square"
 
 
+class ElementType(str, enum.Enum):
+    """Non-bookable layout features drawn on the floor plan so customers can
+    read the room (a window seat, a table near the restrooms, the bar…).
+    """
+
+    WALL = "wall"
+    DOOR = "door"
+    WINDOW = "window"
+    RESTROOM = "restroom"
+    BAR = "bar"
+    ENTRANCE = "entrance"
+    KITCHEN = "kitchen"
+    PLANT = "plant"
+    LABEL = "label"
+
+
 class TableStatus(str, enum.Enum):
     AVAILABLE = "available"
     OCCUPIED = "occupied"

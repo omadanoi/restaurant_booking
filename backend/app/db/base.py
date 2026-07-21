@@ -8,6 +8,7 @@ from app.models import (  # noqa: F401
     AuditLog,
     EmployeeRestaurant,
     Floor,
+    FloorElement,
     Holiday,
     Notification,
     OpeningHours,

@@ -61,6 +61,30 @@ export interface DiningTable {
   is_active: boolean;
 }
 
+export type ElementType =
+  | "wall"
+  | "door"
+  | "window"
+  | "restroom"
+  | "bar"
+  | "entrance"
+  | "kitchen"
+  | "plant"
+  | "label";
+
+export interface FloorElement {
+  id: string;
+  restaurant_id: string;
+  floor_id: string;
+  element_type: ElementType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  label: string | null;
+}
+
 export type ReservationStatus =
   | "pending"
   | "confirmed"

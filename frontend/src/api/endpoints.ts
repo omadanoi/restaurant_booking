@@ -2,7 +2,9 @@ import { api } from "./client";
 import type {
   AppNotification,
   DiningTable,
+  ElementType,
   Floor,
+  FloorElement,
   OpeningHours,
   Paginated,
   Reservation,
@@ -88,6 +90,31 @@ export const changeTableStatus = (
     method: "POST",
     body: { status, note },
   });
+
+// -- floor elements (walls, doors, windows, restrooms…) -----------------------
+
+export const listElements = (restaurantId: string, floorId?: string) =>
+  api<FloorElement[]>(`/restaurants/${restaurantId}/elements`, {
+    query: { floor_id: floorId },
+  });
+
+export const createElement = (
+  restaurantId: string,
+  data: { floor_id: string; element_type: ElementType } & Partial<FloorElement>,
+) => api<FloorElement>(`/restaurants/${restaurantId}/elements`, { method: "POST", body: data });
+
+export const updateElement = (
+  restaurantId: string,
+  elementId: string,
+  data: Partial<FloorElement>,
+) =>
+  api<FloorElement>(`/restaurants/${restaurantId}/elements/${elementId}`, {
+    method: "PATCH",
+    body: data,
+  });
+
+export const deleteElement = (restaurantId: string, elementId: string) =>
+  api<void>(`/restaurants/${restaurantId}/elements/${elementId}`, { method: "DELETE" });
 
 // -- reservations -------------------------------------------------------------
 

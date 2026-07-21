@@ -229,6 +229,58 @@ table.data th { color: var(--text-dim); font-weight: 500; font-size: 0.82rem; }
 }
 .floor-table text.cap { font-size: 10px; fill: var(--text-dim); }
 
+/* -- floor elements (non-bookable layout features) -------------------------- */
+
+.floor-el { pointer-events: none; }
+.floor-canvas.editing .floor-el { pointer-events: auto; cursor: move; }
+.floor-el .shape {
+  fill: var(--surface-2);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+.floor-el .fe-label {
+  fill: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Solid structural elements */
+.floor-el.fe-wall .shape { fill: #545b6b; stroke: #656d80; }
+.floor-el.fe-window .shape { fill: rgba(91, 141, 217, 0.55); stroke: var(--blue); }
+.floor-el.fe-door .shape { fill: var(--surface); stroke: var(--accent); stroke-dasharray: 4 3; }
+.floor-el.fe-entrance .shape { fill: rgba(232, 115, 74, 0.25); stroke: var(--accent); }
+
+/* Labelled rooms / fixtures */
+.floor-el.fe-restroom .shape,
+.floor-el.fe-kitchen .shape { fill: rgba(154, 161, 178, 0.12); stroke: var(--text-dim); }
+.floor-el.fe-bar .shape { fill: rgba(217, 164, 65, 0.15); stroke: var(--amber); }
+.floor-el.fe-bar .fe-label { fill: var(--amber); }
+.floor-el.fe-plant .shape { fill: rgba(76, 175, 125, 0.4); stroke: var(--green); }
+
+.floor-el.selected .shape { stroke: var(--accent); stroke-width: 2.5; }
+
+/* Selection handles (edit mode) */
+.fe-handles { pointer-events: none; }
+.fe-rot-arm { stroke: var(--accent); stroke-width: 1.5; }
+.fe-rot-handle {
+  fill: var(--accent);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+  pointer-events: auto;
+  cursor: grab;
+}
+.fe-resize-handle {
+  fill: var(--accent);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+  pointer-events: auto;
+  cursor: nwse-resize;
+}
+
 .legend { display: flex; gap: 1rem; padding: 0.6rem 1rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
 .legend .item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--text-dim); }
 .legend .dot { width: 10px; height: 10px; border-radius: 3px; }

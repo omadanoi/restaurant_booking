@@ -1,6 +1,7 @@
 from app.models.audit_log import AuditLog
 from app.models.employee_restaurant import EmployeeRestaurant
 from app.models.floor import Floor
+from app.models.floor_element import FloorElement
 from app.models.holiday import Holiday
 from app.models.notification import Notification
 from app.models.opening_hours import OpeningHours
@@ -15,6 +16,7 @@ __all__ = [
     "AuditLog",
     "EmployeeRestaurant",
     "Floor",
+    "FloorElement",
     "Holiday",
     "Notification",
     "OpeningHours",

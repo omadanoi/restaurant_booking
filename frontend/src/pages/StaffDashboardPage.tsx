@@ -4,6 +4,7 @@ import { ApiError } from "../api/client";
 import {
   changeReservationStatus,
   changeTableStatus,
+  listElements,
   listFloors,
   listTables,
   restaurantReservations,
@@ -50,6 +51,10 @@ export function StaffDashboardPage() {
     () => (selectedId ? listTables(selectedId) : Promise.resolve([])),
     [selectedId],
   );
+  const elementsApi = useApi(
+    () => (selectedId ? listElements(selectedId) : Promise.resolve([])),
+    [selectedId],
+  );
   const reservationsApi = useApi(
     () =>
       selectedId
@@ -65,12 +70,17 @@ export function StaffDashboardPage() {
     () => (tablesApi.data ?? []).filter((t) => t.floor_id === floor?.id),
     [tablesApi.data, floor],
   );
+  const floorElements = useMemo(
+    () => (elementsApi.data ?? []).filter((e) => e.floor_id === floor?.id),
+    [elementsApi.data, floor],
+  );
 
   // Live updates: refresh the affected data instead of tracking event
   // payload minutiae — simple and always consistent.
   useRestaurantEvents(selectedId, (event) => {
     setLive(`${event.type} · ${new Date().toLocaleTimeString()}`);
     if (event.type.startsWith("table.")) void tablesApi.reload();
+    if (event.type.startsWith("element.")) void elementsApi.reload();
     if (event.type.startsWith("reservation.")) void reservationsApi.reload();
   });
 
@@ -141,6 +151,7 @@ export function StaffDashboardPage() {
           <FloorCanvas
             floor={floor}
             tables={floorTables}
+            elements={floorElements}
             selectedId={selectedTable?.id ?? null}
             onSelect={(t) => setSelectedTable(t.id === selectedTable?.id ? null : t)}
           />

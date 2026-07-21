@@ -22,12 +22,13 @@ from app.db.session import AsyncSessionLocal
 from app.models import (
     EmployeeRestaurant,
     Floor,
+    FloorElement,
     OpeningHours,
     Restaurant,
     Table,
     User,
 )
-from app.models.enums import EmployeeRoleAtRestaurant, TableShape, UserRole
+from app.models.enums import ElementType, EmployeeRoleAtRestaurant, TableShape, UserRole
 
 PASSWORD = "Password123"
 
@@ -50,6 +51,29 @@ TABLES = [
     ("P1", 150, 550, 0, TableShape.SQUARE, 2, False, False),
     ("P2", 350, 550, 0, TableShape.SQUARE, 4, False, True),
     ("P3", 550, 550, 0, TableShape.RECTANGLE, 6, False, False),
+]
+
+# Non-bookable layout features, so customers can read the room — walls,
+# windows, the restrooms, the bar. (indoor?, type, x, y, w, h, rotation, label)
+# Main Dining is 800x450; Patio is 800x250.
+ELEMENTS = [
+    # Main Dining — perimeter walls
+    (True, ElementType.WALL, 400, 6, 800, 12, 0, None),
+    (True, ElementType.WALL, 400, 444, 800, 12, 0, None),
+    (True, ElementType.WALL, 6, 225, 450, 12, 90, None),
+    (True, ElementType.WALL, 794, 225, 450, 12, 90, None),
+    # Windows along the top wall — these make T1–T4 "window tables"
+    (True, ElementType.WINDOW, 200, 6, 130, 10, 0, None),
+    (True, ElementType.WINDOW, 500, 6, 130, 10, 0, None),
+    # Bar, restrooms, entrance
+    (True, ElementType.BAR, 150, 400, 220, 55, 0, "Bar"),
+    (True, ElementType.RESTROOM, 710, 390, 130, 90, 0, "Restrooms"),
+    (True, ElementType.ENTRANCE, 400, 444, 90, 16, 0, "Entrance"),
+    # Patio — a boundary wall and a few plants
+    (False, ElementType.WALL, 400, 6, 800, 12, 0, None),
+    (False, ElementType.PLANT, 60, 70, 44, 44, 0, None),
+    (False, ElementType.PLANT, 740, 70, 44, 44, 0, None),
+    (False, ElementType.PLANT, 400, 210, 44, 44, 0, None),
 ]
 
 
@@ -146,6 +170,39 @@ async def seed() -> None:
                     )
                 )
             print(f"created 2 floors and {len(TABLES)} tables")
+
+        # Layout elements — seeded idempotently on their own so an already-seeded
+        # demo database (created before this feature) gets them on a re-run.
+        has_elements = (
+            await db.execute(
+                select(FloorElement).where(FloorElement.restaurant_id == restaurant.id).limit(1)
+            )
+        ).scalar_one_or_none()
+        if has_elements is None:
+            floors_by_name = {
+                f.name: f
+                for f in (
+                    await db.execute(select(Floor).where(Floor.restaurant_id == restaurant.id))
+                ).scalars()
+            }
+            main_floor = floors_by_name.get("Main Dining")
+            patio = floors_by_name.get("Patio")
+            if main_floor and patio:
+                for indoor, element_type, x, y, w, h, rotation, label in ELEMENTS:
+                    db.add(
+                        FloorElement(
+                            restaurant_id=restaurant.id,
+                            floor_id=main_floor.id if indoor else patio.id,
+                            element_type=element_type,
+                            x=x,
+                            y=y,
+                            width=w,
+                            height=h,
+                            rotation=rotation,
+                            label=label,
+                        )
+                    )
+                print(f"created {len(ELEMENTS)} layout elements")
 
         await db.commit()
         print("seed complete")

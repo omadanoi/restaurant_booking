@@ -24,6 +24,9 @@ class Floor(UUIDPKMixin, TimestampMixin, Base):
 
     restaurant: Mapped["Restaurant"] = relationship(back_populates="floors")
     tables: Mapped[list["Table"]] = relationship(back_populates="floor")
+    elements: Mapped[list["FloorElement"]] = relationship(
+        back_populates="floor", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<Floor {self.name} (restaurant={self.restaurant_id})>"

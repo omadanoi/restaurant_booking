@@ -1,22 +1,55 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "../api/client";
 import {
+  createElement,
   createFloor,
   createTable,
   deactivateTable,
+  deleteElement,
   getOpeningHours,
+  listElements,
   listFloors,
   listTables,
   setOpeningHours,
+  updateElement,
   updateTable,
 } from "../api/endpoints";
-import type { DiningTable, OpeningHours, TableShape } from "../api/types";
-import { FloorCanvas } from "../components/FloorCanvas";
+import type {
+  DiningTable,
+  ElementType,
+  FloorElement,
+  OpeningHours,
+  TableShape,
+} from "../api/types";
+import { FloorCanvas, type ElementGeom } from "../components/FloorCanvas";
 import { useApi } from "../hooks/useApi";
 import { useMyRestaurants } from "../hooks/useMyRestaurants";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+// Palette of layout features a manager can drop onto the floor. Each has a
+// sensible default size (and caption, for the labelled ones).
+const ELEMENT_PALETTE: {
+  type: ElementType;
+  label: string;
+  width: number;
+  height: number;
+  caption?: string;
+}[] = [
+  { type: "wall", label: "Wall", width: 200, height: 12 },
+  { type: "window", label: "Window", width: 100, height: 10 },
+  { type: "door", label: "Door", width: 50, height: 12 },
+  { type: "entrance", label: "Entrance", width: 80, height: 16, caption: "Entrance" },
+  { type: "restroom", label: "Restrooms", width: 110, height: 80, caption: "Restrooms" },
+  { type: "bar", label: "Bar", width: 200, height: 50, caption: "Bar" },
+  { type: "kitchen", label: "Kitchen", width: 140, height: 100, caption: "Kitchen" },
+  { type: "plant", label: "Plant", width: 40, height: 40 },
+  { type: "label", label: "Text", width: 100, height: 30, caption: "Label" },
+];
+
+// Element types that carry an editable caption.
+const LABELLED_TYPES: ElementType[] = ["entrance", "restroom", "bar", "kitchen", "label"];
 
 export function FloorEditorPage() {
   const { restaurants, selected, selectedId, setSelectedId, loading } = useMyRestaurants();
@@ -60,9 +93,12 @@ export function FloorEditorPage() {
 function LayoutEditor({ restaurantId }: { restaurantId: string }) {
   const floorsApi = useApi(() => listFloors(restaurantId), [restaurantId]);
   const tablesApi = useApi(() => listTables(restaurantId), [restaurantId]);
+  const elementsApi = useApi(() => listElements(restaurantId), [restaurantId]);
 
   const [activeFloorId, setActiveFloorId] = useState<string | null>(null);
   const [selectedTable, setSelectedTable] = useState<DiningTable | null>(null);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [labelDraft, setLabelDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [newTable, setNewTable] = useState({ number: "", capacity: 4, shape: "rectangle" as TableShape });
@@ -74,6 +110,18 @@ function LayoutEditor({ restaurantId }: { restaurantId: string }) {
     () => (tablesApi.data ?? []).filter((t) => t.floor_id === floor?.id),
     [tablesApi.data, floor],
   );
+  const floorElements = useMemo(
+    () => (elementsApi.data ?? []).filter((e) => e.floor_id === floor?.id),
+    [elementsApi.data, floor],
+  );
+  // Always read the selected element from the live list so its geometry/label
+  // stay correct after a drag or reload.
+  const selectedElement = floorElements.find((e) => e.id === selectedElementId) ?? null;
+
+  // Keep the label field in sync when the selection changes.
+  useEffect(() => {
+    setLabelDraft(selectedElement?.label ?? "");
+  }, [selectedElementId, selectedElement?.label]);
 
   function flash(text: string) {
     setSaved(text);
@@ -84,7 +132,7 @@ function LayoutEditor({ restaurantId }: { restaurantId: string }) {
     setError(null);
     try {
       await action();
-      await tablesApi.reload();
+      await Promise.all([tablesApi.reload(), elementsApi.reload()]);
       flash(okMessage);
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Operation failed.");
@@ -129,6 +177,45 @@ function LayoutEditor({ restaurantId }: { restaurantId: string }) {
     setSelectedTable(null);
   }
 
+  // -- layout elements (walls, doors, windows…) -------------------------------
+
+  async function addElement(preset: (typeof ELEMENT_PALETTE)[number]) {
+    if (!floor) return;
+    await run(
+      () =>
+        createElement(restaurantId, {
+          floor_id: floor.id,
+          element_type: preset.type,
+          x: Math.round(floor.width / 2),
+          y: Math.round(floor.height / 2),
+          width: preset.width,
+          height: preset.height,
+          label: preset.caption ?? null,
+        }),
+      `${preset.label} added`,
+    );
+  }
+
+  async function handleElementChange(elementId: string, geom: ElementGeom) {
+    await run(() => updateElement(restaurantId, elementId, geom), "Layout saved");
+  }
+
+  async function rotateElement(element: FloorElement) {
+    const rotation = Math.round((element.rotation + 15) % 360);
+    await run(() => updateElement(restaurantId, element.id, { rotation }), `Rotated to ${rotation}°`);
+  }
+
+  async function commitLabel(element: FloorElement) {
+    const label = labelDraft.trim() || null;
+    if (label === (element.label ?? null)) return;
+    await run(() => updateElement(restaurantId, element.id, { label }), "Label saved");
+  }
+
+  async function removeElement(element: FloorElement) {
+    await run(() => deleteElement(restaurantId, element.id), "Element removed");
+    setSelectedElementId(null);
+  }
+
   async function addFloor() {
     if (!newFloorName) return;
     setError(null);
@@ -168,17 +255,30 @@ function LayoutEditor({ restaurantId }: { restaurantId: string }) {
         <button onClick={addFloor}>+ Add floor</button>
       </div>
 
-      <p className="muted">Drag tables to move them. Click a table to edit it.</p>
+      <p className="muted">
+        Drag tables or layout features to move them. Click a table to edit it; select a feature to
+        resize (drag a corner), rotate (drag the top handle) or delete it.
+      </p>
 
       {floor && (
         <div className="floor-wrap">
           <FloorCanvas
             floor={floor}
             tables={floorTables}
+            elements={floorElements}
             mode="edit"
             selectedId={selectedTable?.id ?? null}
-            onSelect={(t) => setSelectedTable(t.id === selectedTable?.id ? null : t)}
+            onSelect={(t) => {
+              setSelectedElementId(null);
+              setSelectedTable(t.id === selectedTable?.id ? null : t);
+            }}
             onMove={handleMove}
+            selectedElementId={selectedElementId}
+            onSelectElement={(el) => {
+              setSelectedTable(null);
+              setSelectedElementId(el?.id ?? null);
+            }}
+            onElementChange={handleElementChange}
           />
         </div>
       )}
@@ -241,6 +341,46 @@ function LayoutEditor({ restaurantId }: { restaurantId: string }) {
               </label>
               <button className="danger" onClick={() => removeTable(selectedTable)}>
                 Remove table
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="row" style={{ marginTop: "1rem", alignItems: "stretch" }}>
+        <div className="card" style={{ flex: 1, minWidth: "300px" }}>
+          <h2>Add layout feature</h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Walls, windows and fixtures help customers picture the room — a window seat, a table by
+            the bar. They can't be booked.
+          </p>
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            {ELEMENT_PALETTE.map((preset) => (
+              <button key={preset.type} onClick={() => addElement(preset)} disabled={!floor}>
+                + {preset.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {selectedElement && (
+          <div className="card" style={{ flex: 1, minWidth: "300px" }}>
+            <h2 style={{ textTransform: "capitalize" }}>{selectedElement.element_type}</h2>
+            <div className="row">
+              <button onClick={() => rotateElement(selectedElement)}>Rotate +15°</button>
+              {LABELLED_TYPES.includes(selectedElement.element_type) && (
+                <label className="field" style={{ flex: 1, minWidth: "8rem" }}>
+                  Label
+                  <input
+                    value={labelDraft}
+                    onChange={(e) => setLabelDraft(e.target.value)}
+                    onBlur={() => commitLabel(selectedElement)}
+                    onKeyDown={(e) => e.key === "Enter" && commitLabel(selectedElement)}
+                  />
+                </label>
+              )}
+              <button className="danger" onClick={() => removeElement(selectedElement)}>
+                Remove
               </button>
             </div>
           </div>

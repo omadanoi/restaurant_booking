@@ -7,6 +7,7 @@ import {
   findAvailability,
   getOpeningHours,
   getRestaurant,
+  listElements,
   listFloors,
   listTables,
 } from "../api/endpoints";
@@ -29,6 +30,7 @@ export function RestaurantDetailPage() {
   const { data: restaurant } = useApi(() => getRestaurant(restaurantId), [restaurantId]);
   const { data: floors } = useApi(() => listFloors(restaurantId), [restaurantId]);
   const { data: tables } = useApi(() => listTables(restaurantId), [restaurantId]);
+  const { data: elements } = useApi(() => listElements(restaurantId), [restaurantId]);
   const { data: hours } = useApi(() => getOpeningHours(restaurantId), [restaurantId]);
 
   const [activeFloorId, setActiveFloorId] = useState<string | null>(null);
@@ -53,6 +55,10 @@ export function RestaurantDetailPage() {
   const floorTables = useMemo(
     () => (tables ?? []).filter((t) => t.floor_id === floor?.id),
     [tables, floor],
+  );
+  const floorElements = useMemo(
+    () => (elements ?? []).filter((e) => e.floor_id === floor?.id),
+    [elements, floor],
   );
 
   function window(): { start: Date; end: Date } {
@@ -217,6 +223,7 @@ export function RestaurantDetailPage() {
           <FloorCanvas
             floor={floor}
             tables={floorTables}
+            elements={floorElements}
             selectableIds={available}
             selectedId={selected?.id ?? null}
             onSelect={(t) => setSelected(t)}
