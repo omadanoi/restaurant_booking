@@ -96,12 +96,16 @@ All seeded with password `Password123`:
 ## Testing
 
 ```bash
-cd backend && pytest              # 79 tests: unit, API, integration
+cd backend && pytest              # 85 tests: unit, API, integration
 cd backend && ruff check .        # lint
 cd frontend && npx playwright test  # 9 browser E2E tests (needs seeded data)
 ```
 
 Backend tests run against a real PostgreSQL test database (the overlap constraint needs real `btree_gist`), and include DB-level constraint tests plus true concurrent-booking races fired from independent connections. E2E covers registration, login failures, the full book-and-cancel flow, opening-hours rejection, role guards, drag-and-drop persistence across reload, and a live WebSocket update between two sessions. All of it runs in GitHub Actions on every push and pull request.
+
+## Deployment
+
+Both services ship as Dockerfiles that bind the host-assigned `$PORT`, and the backend applies its own migrations on boot, so the stack deploys to any container host. [`docs/deploy.md`](docs/deploy.md) is a step-by-step walkthrough for Railway (API + SPA + Postgres + Redis, managed TLS so the realtime socket upgrades to `wss://`), with notes for Render, Fly.io and a plain VPS.
 
 ## Repository layout
 
@@ -113,6 +117,6 @@ backend/    FastAPI app — clean architecture: api → services → repositorie
   scripts/  seed.py — demo data
 frontend/   React + TypeScript SPA, Playwright E2E in e2e/
 infra/      Docker Compose (full stack) + Postgres init
-docs/       architecture.md + ADRs
+docs/       architecture.md, deploy.md + ADRs
 .github/    CI workflows (backend, frontend, E2E)
 ```

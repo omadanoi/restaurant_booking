@@ -1,6 +1,9 @@
+import json
 from functools import lru_cache
+from typing import Annotated
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -34,7 +37,45 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 14
 
-    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    # Accepts either a JSON array or a comma-separated list, because hosting
+    # dashboards are a hostile place to type JSON.
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def _split_cors_origins(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        raw = value.strip()
+        if raw.startswith("["):
+            return json.loads(raw)
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def _derive_database_urls(self) -> "Settings":
+        """Make a managed host's plain DSN usable as-is.
+
+        Providers hand out one `postgresql://user:pass@host/db` URL, but this
+        app needs two: asyncpg for the app and psycopg2 for Alembic. Fill in
+        the drivers rather than making the operator write both by hand. An
+        explicitly-set SYNC_DATABASE_URL still wins.
+        """
+        scheme, sep, rest = self.DATABASE_URL.partition("://")
+        if sep and scheme in ("postgres", "postgresql"):
+            self.DATABASE_URL = f"postgresql+asyncpg://{rest}"
+        if "SYNC_DATABASE_URL" not in self.model_fields_set:
+            _, _, rest = self.DATABASE_URL.partition("://")
+            self.SYNC_DATABASE_URL = f"postgresql+psycopg2://{rest}"
+        return self
+
+    @model_validator(mode="after")
+    def _require_production_secret(self) -> "Settings":
+        if self.ENV == "production" and self.SECRET_KEY == "change-me-in-production":
+            raise ValueError(
+                "SECRET_KEY must be set to a random value when ENV=production "
+                "(the default would let anyone forge access tokens)."
+            )
+        return self
 
     @property
     def is_development(self) -> bool:

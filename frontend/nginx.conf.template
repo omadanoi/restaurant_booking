@@ -1,5 +1,8 @@
+# Rendered to /etc/nginx/conf.d/default.conf at container start by the nginx
+# image's own envsubst step, so managed hosts can inject the port to bind.
+# Only real environment variables are substituted — nginx's own $uri survives.
 server {
-    listen 80;
+    listen ${PORT};
     server_name _;
 
     root /usr/share/nginx/html;
