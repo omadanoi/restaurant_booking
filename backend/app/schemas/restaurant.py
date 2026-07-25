@@ -20,6 +20,7 @@ class RestaurantCreate(BaseModel):
         default=None, ge=0, max_digits=10, decimal_places=2
     )
     deposit_currency: str = Field(default="USD", min_length=3, max_length=3)
+    cancellation_cutoff_hours: int = Field(default=0, ge=0, le=168)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
 
@@ -48,6 +49,7 @@ class RestaurantUpdate(BaseModel):
         default=None, ge=0, max_digits=10, decimal_places=2
     )
     deposit_currency: str | None = Field(default=None, min_length=3, max_length=3)
+    cancellation_cutoff_hours: int | None = Field(default=None, ge=0, le=168)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
 
@@ -69,6 +71,7 @@ class RestaurantOut(BaseModel):
     deposit_enabled: bool
     deposit_amount: Decimal | None
     deposit_currency: str
+    cancellation_cutoff_hours: int
     latitude: float | None
     longitude: float | None
 

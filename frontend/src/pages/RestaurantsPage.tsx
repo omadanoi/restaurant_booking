@@ -49,15 +49,18 @@ export function RestaurantsPage() {
           <Link key={r.id} to={`/restaurants/${r.id}`} className="card-link">
             <div className="card">
               <h2>{r.name}</h2>
-              <p className="muted">
-                {r.cuisine_type ?? "Restaurant"} · {r.city}, {r.country}
-              </p>
+              <div className="chip-row">
+                {r.cuisine_type && <span className="chip accent">{r.cuisine_type}</span>}
+                <span className="chip">
+                  {r.city}, {r.country}
+                </span>
+                {r.deposit_enabled && r.deposit_amount && (
+                  <span className="chip">
+                    Deposit {r.deposit_amount} {r.deposit_currency}
+                  </span>
+                )}
+              </div>
               <p className="muted">{r.description}</p>
-              {r.deposit_enabled && r.deposit_amount && (
-                <p className="muted deposit-note">
-                  Booking deposit: {r.deposit_amount} {r.deposit_currency}
-                </p>
-              )}
             </div>
           </Link>
         ))}

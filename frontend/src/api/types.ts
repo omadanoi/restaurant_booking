@@ -33,6 +33,7 @@ export interface Restaurant {
   /** Decimal serialized as a string by the API — display only, no arithmetic. */
   deposit_amount: string | null;
   deposit_currency: string;
+  cancellation_cutoff_hours: number;
   latitude: number | null;
   longitude: number | null;
 }

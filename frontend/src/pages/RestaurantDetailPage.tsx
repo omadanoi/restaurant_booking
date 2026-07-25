@@ -268,6 +268,12 @@ export function RestaurantDetailPage() {
               style={{ flex: 1, minWidth: "240px" }}
             />
           </div>
+          {restaurant.cancellation_cutoff_hours > 0 && (
+            <p className="muted" style={{ marginTop: "0.5rem" }}>
+              Free cancellation until {restaurant.cancellation_cutoff_hours}h before your
+              reservation; after that, contact the restaurant.
+            </p>
+          )}
           {depositDue && (
             <div className="deposit-box">
               <p>

@@ -50,6 +50,7 @@ export const updateRestaurant = (
       | "deposit_enabled"
       | "deposit_amount"
       | "deposit_currency"
+      | "cancellation_cutoff_hours"
       | "latitude"
       | "longitude"
     >

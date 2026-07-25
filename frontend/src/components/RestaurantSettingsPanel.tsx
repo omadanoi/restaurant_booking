@@ -14,6 +14,7 @@ export function RestaurantSettingsPanel({ restaurantId }: { restaurantId: string
   const [depositEnabled, setDepositEnabled] = useState(false);
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("USD");
+  const [cutoffHours, setCutoffHours] = useState(0);
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -24,6 +25,7 @@ export function RestaurantSettingsPanel({ restaurantId }: { restaurantId: string
     setDepositEnabled(restaurant.deposit_enabled);
     setAmount(restaurant.deposit_amount ?? "");
     setCurrency(restaurant.deposit_currency);
+    setCutoffHours(restaurant.cancellation_cutoff_hours);
     setPin(
       restaurant.latitude !== null && restaurant.longitude !== null
         ? { lat: restaurant.latitude, lng: restaurant.longitude }
@@ -39,6 +41,7 @@ export function RestaurantSettingsPanel({ restaurantId }: { restaurantId: string
         deposit_enabled: depositEnabled,
         deposit_amount: amount === "" ? null : amount,
         deposit_currency: currency,
+        cancellation_cutoff_hours: cutoffHours,
         latitude: pin?.lat ?? null,
         longitude: pin?.lng ?? null,
       });
@@ -98,6 +101,22 @@ export function RestaurantSettingsPanel({ restaurantId }: { restaurantId: string
           </select>
         </label>
       </div>
+
+      <h2 style={{ marginTop: "1.25rem" }}>Cancellation policy</h2>
+      <p className="muted">
+        Customers can't cancel within this many hours of their reservation (staff always can).
+        Combined with a deposit, this stops last-minute flake-outs. 0 = cancel anytime.
+      </p>
+      <label className="field" style={{ maxWidth: "12rem" }}>
+        Cutoff (hours before start)
+        <input
+          type="number"
+          min={0}
+          max={168}
+          value={cutoffHours}
+          onChange={(e) => setCutoffHours(Math.max(0, Number(e.target.value)))}
+        />
+      </label>
 
       <h2 style={{ marginTop: "1.25rem" }}>Location on the map</h2>
       <p className="muted">

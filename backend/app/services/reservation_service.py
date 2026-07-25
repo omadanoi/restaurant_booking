@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.exc import IntegrityError
@@ -218,6 +218,7 @@ class ReservationService:
         reservation = await self._get_owned_or_staff(actor, reservation_id)
         if reservation.status not in CANCELLABLE:
             raise ValidationError("This reservation cannot be cancelled.")
+        await self._enforce_cancellation_cutoff(actor, reservation)
 
         before = self._snapshot(reservation)
         reservation = await self.reservations.update(
@@ -309,6 +310,35 @@ class ReservationService:
         return [t for t in tables if fits(t)]
 
     # -- internals ------------------------------------------------------------
+
+    async def _enforce_cancellation_cutoff(self, actor: User, reservation: Reservation) -> None:
+        """Customers can't cancel inside the restaurant's cutoff window.
+
+        Staff always can (the phone call to the restaurant stays the escape
+        hatch), and that includes the edge case where the booking's owner is
+        themselves staff at the restaurant.
+        """
+        from app.core.permissions import check_restaurant_staff
+
+        if reservation.customer_id != actor.id:
+            return  # non-owners only reach cancel() via the staff/admin path
+
+        restaurant = await self.restaurants.get(reservation.restaurant_id)
+        cutoff = restaurant.cancellation_cutoff_hours if restaurant else 0
+        if cutoff <= 0:
+            return
+        if datetime.now(UTC) < reservation.start_time - timedelta(hours=cutoff):
+            return
+
+        try:
+            await check_restaurant_staff(self.db, actor, reservation.restaurant_id)
+            return  # owner is also staff here — allow
+        except PermissionDeniedError:
+            pass
+        raise ValidationError(
+            f"Cancellations must be made at least {cutoff} hours before the "
+            "reservation. Please contact the restaurant directly."
+        )
 
     async def _refund_deposit_if_paid(self, reservation: Reservation) -> None:
         """Full refund of a paid deposit; no-op otherwise.

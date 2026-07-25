@@ -117,6 +117,7 @@ async def seed() -> None:
                 deposit_enabled=True,
                 deposit_amount=Decimal("15.00"),
                 deposit_currency="USD",
+                cancellation_cutoff_hours=2,
                 latitude=39.7817,
                 longitude=-89.6501,
             )
@@ -186,6 +187,9 @@ async def seed() -> None:
             restaurant.latitude = 39.7817
             restaurant.longitude = -89.6501
             print("backfilled deposit config and map coordinates")
+        if restaurant.cancellation_cutoff_hours == 0:
+            restaurant.cancellation_cutoff_hours = 2
+            print("backfilled cancellation cutoff (2h)")
 
         # Layout elements — seeded idempotently on their own so an already-seeded
         # demo database (created before this feature) gets them on a re-run.

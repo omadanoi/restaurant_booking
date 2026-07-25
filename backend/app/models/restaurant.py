@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Float, Numeric, String
+from sqlalchemy import Boolean, Float, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base
@@ -27,6 +27,10 @@ class Restaurant(UUIDPKMixin, TimestampMixin, Base):
     deposit_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     deposit_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     deposit_currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
+    # Customers can't cancel within this many hours of the reservation start
+    # (0 = cancel anytime). Staff can always cancel, so a phone call to the
+    # restaurant remains the escape hatch.
+    cancellation_cutoff_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Map pin, set by the manager (no geocoding service involved).
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
