@@ -46,3 +46,8 @@ class ConflictError(AppError):
 
 class OverlappingReservationError(ConflictError):
     detail = "The selected table is already reserved for an overlapping time window."
+
+
+class PaymentDeclinedError(AppError):
+    status_code = 402
+    detail = "The deposit payment was declined."

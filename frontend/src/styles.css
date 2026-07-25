@@ -1,18 +1,22 @@
 :root {
-  --bg: #0f1115;
-  --surface: #181b22;
-  --surface-2: #21252f;
-  --border: #2e3340;
-  --text: #e8eaf0;
+  --bg: #0b0d12;
+  --surface: #171a22;
+  --surface-glass: rgba(23, 26, 34, 0.72);
+  --surface-2: #212530;
+  --border: #2d323f;
+  --text: #eceef4;
   --text-dim: #9aa1b2;
-  --accent: #e8734a;
-  --accent-hover: #f08a66;
+  --accent: #f0764d;
+  --accent-2: #e8564f;
+  --accent-hover: #f68f6c;
+  --ring: rgba(240, 118, 77, 0.45);
   --green: #4caf7d;
   --red: #e05555;
   --amber: #d9a441;
   --blue: #5b8dd9;
-  --radius: 10px;
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --radius: 12px;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -27,44 +31,79 @@ body {
   line-height: 1.5;
 }
 
+/* Subtle warm glow anchoring the dark theme; fixed so it doesn't scroll. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(600px 400px at 85% -10%, rgba(240, 118, 77, 0.09), transparent 65%),
+    radial-gradient(700px 500px at -10% 100%, rgba(91, 141, 217, 0.06), transparent 65%);
+  pointer-events: none;
+}
+
 h1, h2, h3 {
+  font-family: "Sora", "Inter", sans-serif;
   font-weight: 600;
   margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
 }
-h1 { font-size: 1.5rem; }
+h1 { font-size: 1.55rem; }
 h2 { font-size: 1.2rem; }
 h3 { font-size: 1rem; }
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* -- layout ---------------------------------------------------------------- */
 
 .nav {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  padding: 0.75rem 1.5rem;
+  gap: 1rem;
+  padding: 0.8rem 1.5rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  z-index: 10;
+  /* Leaflet panes go up to ~1000 — the nav must float above the maps. */
+  z-index: 1100;
+}
+@supports (backdrop-filter: blur(1px)) {
+  .nav {
+    background: var(--surface-glass);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
 }
 
 .nav .brand {
+  font-family: "Sora", "Inter", sans-serif;
   font-weight: 700;
   font-size: 1.1rem;
   color: var(--text);
+  letter-spacing: -0.02em;
 }
 .nav .brand span { color: var(--accent); }
 
 .nav a.nav-link {
   color: var(--text-dim);
-  padding: 0.25rem 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  transition: color 0.15s, background 0.15s;
 }
 .nav a.nav-link:hover { color: var(--text); text-decoration: none; }
-.nav a.nav-link.active { color: var(--accent); }
+.nav a.nav-link.active {
+  color: var(--accent);
+  background: rgba(240, 118, 77, 0.12);
+}
 
 .nav .spacer { flex: 1; }
 .nav .who { color: var(--text-dim); font-size: 0.85rem; }
@@ -82,7 +121,27 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1.25rem;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
+@supports (backdrop-filter: blur(1px)) {
+  .card {
+    background: var(--surface-glass);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+}
+
+/* Cards that ARE links (restaurant grid): lift on hover. */
+a.card-link { text-decoration: none; color: inherit; display: block; }
+a.card-link:hover { text-decoration: none; }
+a.card-link:hover .card {
+  transform: translateY(-2px);
+  border-color: rgba(240, 118, 77, 0.55);
+  box-shadow: var(--shadow);
+}
+
+/* Map containers sit edge-to-edge inside their card. */
+.card.map-card { padding: 0; overflow: hidden; }
 
 .grid {
   display: grid;
@@ -105,17 +164,25 @@ button, .btn {
   padding: 0.45rem 0.9rem;
   border-radius: 8px;
   cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s, box-shadow 0.15s;
 }
-button:hover:not(:disabled) { border-color: var(--text-dim); }
+button:hover:not(:disabled) {
+  border-color: var(--text-dim);
+  transform: translateY(-1px);
+}
+button:active:not(:disabled) { transform: translateY(0); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
   color: #fff;
   font-weight: 600;
 }
-button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+button.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+  box-shadow: 0 4px 14px rgba(240, 118, 77, 0.35);
+}
 
 button.danger { color: var(--red); border-color: var(--red); background: transparent; }
 button.small { padding: 0.2rem 0.6rem; font-size: 0.85rem; }
@@ -127,8 +194,13 @@ input, select, textarea {
   color: var(--text);
   padding: 0.45rem 0.7rem;
   border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-input:focus, select:focus, textarea:focus { outline: 1px solid var(--accent); }
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
 
 label.field {
   display: flex;
@@ -172,6 +244,11 @@ label.field {
 .badge.cleaning { background: rgba(91, 141, 217, 0.15); color: var(--blue); }
 .badge.out_of_service { background: var(--surface-2); color: var(--text-dim); }
 .badge.confirmed, .badge.seated, .badge.completed, .badge.sent { background: rgba(76, 175, 125, 0.18); color: var(--green); }
+
+/* Deposit lifecycle badges */
+.badge.paid { background: rgba(76, 175, 125, 0.18); color: var(--green); }
+.badge.refunded { background: rgba(91, 141, 217, 0.15); color: var(--blue); }
+.badge.forfeited { background: rgba(224, 85, 85, 0.15); color: var(--red); }
 
 table.data {
   width: 100%;
@@ -310,10 +387,65 @@ table.data th { color: var(--text-dim); font-weight: 500; font-size: 0.82rem; }
   border-radius: var(--radius);
   padding: 0.75rem 1rem;
   max-width: 340px;
-  z-index: 100;
+  z-index: 1200; /* above nav (1100) and Leaflet panes (~1000) */
   animation: slide-in 0.2s ease-out;
+  box-shadow: var(--shadow);
 }
 @keyframes slide-in {
   from { transform: translateY(10px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+/* -- empty states ------------------------------------------------------------ */
+
+.empty {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+}
+.empty h2 { color: var(--text); }
+
+/* -- deposits ---------------------------------------------------------------- */
+
+.deposit-box {
+  margin-top: 0.9rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(240, 118, 77, 0.4);
+  background: rgba(240, 118, 77, 0.07);
+  border-radius: var(--radius);
+}
+.deposit-box p { margin: 0 0 0.6rem; }
+.deposit-note { color: var(--amber); }
+
+/* -- maps (Leaflet) ---------------------------------------------------------- */
+
+.leaflet-container {
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font: inherit;
+}
+.restaurants-map { height: 320px; width: 100%; }
+.mini-map { height: 220px; width: 100%; }
+.location-picker { height: 320px; width: 100%; cursor: crosshair; }
+
+/* Dark-theme popups matching the app surfaces. */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+.leaflet-popup-content a { color: var(--accent); }
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(11, 13, 18, 0.7);
+  color: var(--text-dim);
+}
+.leaflet-container .leaflet-control-attribution a { color: var(--text-dim); }
+.leaflet-bar a {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+.leaflet-bar a:hover { background: var(--surface); }

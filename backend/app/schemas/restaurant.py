@@ -1,7 +1,8 @@
 import uuid
 from datetime import date, time
+from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class RestaurantCreate(BaseModel):
@@ -14,6 +15,19 @@ class RestaurantCreate(BaseModel):
     phone: str | None = Field(default=None, max_length=32)
     email: EmailStr | None = None
     cuisine_type: str | None = Field(default=None, max_length=120)
+    deposit_enabled: bool = False
+    deposit_amount: Decimal | None = Field(
+        default=None, ge=0, max_digits=10, decimal_places=2
+    )
+    deposit_currency: str = Field(default="USD", min_length=3, max_length=3)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+
+    @model_validator(mode="after")
+    def deposit_needs_amount(self) -> "RestaurantCreate":
+        if self.deposit_enabled and (self.deposit_amount is None or self.deposit_amount <= 0):
+            raise ValueError("deposit_amount must be positive when deposits are enabled")
+        return self
 
 
 class RestaurantUpdate(BaseModel):
@@ -27,6 +41,15 @@ class RestaurantUpdate(BaseModel):
     email: EmailStr | None = None
     cuisine_type: str | None = Field(default=None, max_length=120)
     is_active: bool | None = None
+    # enabled-requires-amount is enforced in RestaurantService.update against
+    # the merged state — a PATCH schema can't see fields the client omitted.
+    deposit_enabled: bool | None = None
+    deposit_amount: Decimal | None = Field(
+        default=None, ge=0, max_digits=10, decimal_places=2
+    )
+    deposit_currency: str | None = Field(default=None, min_length=3, max_length=3)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
 
 
 class RestaurantOut(BaseModel):
@@ -43,6 +66,11 @@ class RestaurantOut(BaseModel):
     email: str | None
     cuisine_type: str | None
     is_active: bool
+    deposit_enabled: bool
+    deposit_amount: Decimal | None
+    deposit_currency: str
+    latitude: float | None
+    longitude: float | None
 
 
 class RestaurantListOut(BaseModel):

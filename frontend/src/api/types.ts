@@ -29,6 +29,12 @@ export interface Restaurant {
   email: string | null;
   cuisine_type: string | null;
   is_active: boolean;
+  deposit_enabled: boolean;
+  /** Decimal serialized as a string by the API — display only, no arithmetic. */
+  deposit_amount: string | null;
+  deposit_currency: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface Floor {
@@ -93,6 +99,8 @@ export type ReservationStatus =
   | "cancelled"
   | "no_show";
 
+export type DepositStatus = "none" | "pending" | "paid" | "refunded" | "forfeited";
+
 export interface Reservation {
   id: string;
   restaurant_id: string;
@@ -104,6 +112,9 @@ export interface Reservation {
   status: ReservationStatus;
   source: string;
   special_requests: string | null;
+  deposit_amount: string | null;
+  deposit_currency: string | null;
+  deposit_status: DepositStatus;
   created_at: string;
 }
 

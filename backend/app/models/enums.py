@@ -53,6 +53,31 @@ class ReservationSource(str, enum.Enum):
     WALK_IN = "walk_in"
 
 
+class DepositStatus(str, enum.Enum):
+    """Lifecycle of a booking deposit.
+
+    NONE means the restaurant didn't require one. PENDING is reserved for a
+    future real payment provider whose confirmation is asynchronous — the
+    demo provider settles instantly, so it never produces this state.
+    """
+
+    NONE = "none"
+    PENDING = "pending"
+    PAID = "paid"
+    REFUNDED = "refunded"
+    FORFEITED = "forfeited"
+
+
+class PaymentKind(str, enum.Enum):
+    CHARGE = "charge"
+    REFUND = "refund"
+
+
+class PaymentStatus(str, enum.Enum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
 class NotificationType(str, enum.Enum):
     RESERVATION_CONFIRMED = "reservation_confirmed"
     RESERVATION_REMINDER = "reservation_reminder"

@@ -50,6 +50,12 @@ class RestaurantService:
         updates = data.model_dump(exclude_unset=True)
         if "timezone" in updates:
             self._validate_timezone(updates["timezone"])
+        # Cross-field invariant against the MERGED state — the PATCH schema
+        # can't validate this because it only sees fields the client sent.
+        merged_enabled = updates.get("deposit_enabled", restaurant.deposit_enabled)
+        merged_amount = updates.get("deposit_amount", restaurant.deposit_amount)
+        if merged_enabled and (merged_amount is None or merged_amount <= 0):
+            raise ValidationError("deposit_amount must be positive when deposits are enabled.")
         return await self.restaurants.update(restaurant, updates)
 
     async def deactivate(self, restaurant_id: uuid.UUID) -> Restaurant:

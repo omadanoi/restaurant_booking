@@ -38,6 +38,24 @@ export const listRestaurants = (query: { city?: string; limit?: number; offset?:
 
 export const getRestaurant = (id: string) => api<Restaurant>(`/restaurants/${id}`);
 
+export const updateRestaurant = (
+  id: string,
+  data: Partial<
+    Pick<
+      Restaurant,
+      | "name"
+      | "description"
+      | "phone"
+      | "cuisine_type"
+      | "deposit_enabled"
+      | "deposit_amount"
+      | "deposit_currency"
+      | "latitude"
+      | "longitude"
+    >
+  >,
+) => api<Restaurant>(`/restaurants/${id}`, { method: "PATCH", body: data });
+
 export const createRestaurant = (data: Partial<Restaurant>) =>
   api<Restaurant>("/restaurants", { method: "POST", body: data });
 
@@ -135,6 +153,7 @@ export const createReservation = (data: {
   end_time: string;
   party_size: number;
   special_requests?: string;
+  payment?: { card_number?: string };
 }) => api<Reservation>("/reservations", { method: "POST", body: data });
 
 export const myReservations = (query: { limit?: number; offset?: number } = {}) =>

@@ -5,6 +5,7 @@ from app.models.floor_element import FloorElement
 from app.models.holiday import Holiday
 from app.models.notification import Notification
 from app.models.opening_hours import OpeningHours
+from app.models.payment import Payment
 from app.models.refresh_token import RefreshToken
 from app.models.reservation import Reservation
 from app.models.restaurant import Restaurant
@@ -20,6 +21,7 @@ __all__ = [
     "Holiday",
     "Notification",
     "OpeningHours",
+    "Payment",
     "RefreshToken",
     "Reservation",
     "Restaurant",

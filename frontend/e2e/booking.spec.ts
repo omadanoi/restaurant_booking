@@ -32,7 +32,7 @@ test("customer books a table on the floor plan, then cancels it", async ({ page 
 
   await selectableTables(page).first().click();
   await expect(page.getByRole("heading", { name: /Book table/ })).toBeVisible();
-  await page.getByRole("button", { name: /Confirm for/ }).click();
+  await page.getByRole("button", { name: /confirm for/i }).click();
   await expect(page.getByText(/Booked table/)).toBeVisible();
 
   // The same window now has one fewer available table.
@@ -61,6 +61,6 @@ test("booking outside opening hours is rejected with a clear error", async ({ pa
   // (22:30 would trip a different guard: the window would cross midnight.)
   await checkAvailability(page, futureDate(), "21:30");
   await selectableTables(page).first().click();
-  await page.getByRole("button", { name: /Confirm for/ }).click();
+  await page.getByRole("button", { name: /confirm for/i }).click();
   await expect(page.getByText(/within opening hours/i)).toBeVisible();
 });

@@ -1,14 +1,25 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base
 from app.db.mixins import TimestampMixin, UUIDPKMixin
-from app.models.enums import ReservationSource, ReservationStatus
+from app.models.enums import DepositStatus, ReservationSource, ReservationStatus
 
 
 class Reservation(UUIDPKMixin, TimestampMixin, Base):
@@ -69,6 +80,21 @@ class Reservation(UUIDPKMixin, TimestampMixin, Base):
         nullable=False,
         default=ReservationSource.ONLINE,
     )
+    # Deposit snapshot, frozen at booking time so later config changes never
+    # alter what a customer already paid.
+    deposit_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    deposit_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    deposit_status: Mapped[DepositStatus] = mapped_column(
+        Enum(
+            DepositStatus,
+            name="deposit_status",
+            values_callable=lambda e: [x.value for x in e],
+            create_type=False,
+        ),
+        nullable=False,
+        default=DepositStatus.NONE,
+    )
+
     special_requests: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     confirmed_by: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -78,6 +104,7 @@ class Reservation(UUIDPKMixin, TimestampMixin, Base):
     table: Mapped["Table"] = relationship(back_populates="reservations")
     customer: Mapped["User"] = relationship(back_populates="reservations", foreign_keys=[customer_id])
     status_logs: Mapped[list["TableStatusLog"]] = relationship(back_populates="reservation")
+    payments: Mapped[list["Payment"]] = relationship(back_populates="reservation")
 
     def __repr__(self) -> str:
         return f"<Reservation table={self.table_id} {self.start_time}-{self.end_time}>"

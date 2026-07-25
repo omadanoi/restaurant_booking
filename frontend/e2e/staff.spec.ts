@@ -18,7 +18,18 @@ test("waiter sees the staff dashboard with the live floor", async ({ page }) => 
   await expect(page.getByRole("link", { name: "Floor editor" })).toHaveCount(0);
 });
 
-test("manager drags a table and the new position is persisted", async ({ page }) => {
+test("manager drags a table and the new position is persisted", async ({ page, request }) => {
+  // The drag PERSISTS to the database, so without cleanup each run pushes
+  // the table further until it drifts out of the viewport and the mouse
+  // misses it entirely. Snapshot the layout first and restore it at the end.
+  const restaurants = (await (await request.get(`${API}/restaurants`)).json()) as {
+    items: { id: string; name: string }[];
+  };
+  const demo = restaurants.items.find((r) => r.name === "Trattoria Demo")!;
+  const tablesBefore = (await (
+    await request.get(`${API}/restaurants/${demo.id}/tables`)
+  ).json()) as { id: string; x: number; y: number }[];
+
   await loginViaUi(page, "manager@demo.com", DEMO_PASSWORD);
   await page.goto("/editor");
 
@@ -26,6 +37,9 @@ test("manager drags a table and the new position is persisted", async ({ page })
   await expect(table).toBeVisible();
   const before = await table.getAttribute("transform");
 
+  // Ensure the drag target is inside the viewport before grabbing its
+  // coordinates — mouse events outside the window hit nothing.
+  await table.scrollIntoViewIfNeeded();
   const box = (await table.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -38,6 +52,21 @@ test("manager drags a table and the new position is persisted", async ({ page })
   await page.reload();
   const after = await page.locator("g.floor-table").first().getAttribute("transform");
   expect(after).not.toBe(before);
+
+  // Restore the original layout so repeated runs stay deterministic.
+  const token = await apiLogin(request, "manager@demo.com", DEMO_PASSWORD);
+  const tablesAfter = (await (
+    await request.get(`${API}/restaurants/${demo.id}/tables`)
+  ).json()) as { id: string; x: number; y: number }[];
+  for (const t of tablesAfter) {
+    const orig = tablesBefore.find((o) => o.id === t.id);
+    if (orig && (orig.x !== t.x || orig.y !== t.y)) {
+      await request.patch(`${API}/restaurants/${demo.id}/tables/${t.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { x: orig.x, y: orig.y },
+      });
+    }
+  }
 });
 
 test("waiter dashboard receives a live event when a customer books", async ({

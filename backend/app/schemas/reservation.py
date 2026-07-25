@@ -1,9 +1,17 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
-from app.models.enums import ReservationSource, ReservationStatus
+from app.models.enums import DepositStatus, ReservationSource, ReservationStatus
+
+
+class DepositPaymentIn(BaseModel):
+    """Demo-only card capture. A real provider replaces card_number with a
+    payment_token confirmed client-side (see app/payments/base.py)."""
+
+    card_number: str | None = Field(default=None, max_length=32)
 
 
 class ReservationCreate(BaseModel):
@@ -14,6 +22,7 @@ class ReservationCreate(BaseModel):
     end_time: AwareDatetime
     party_size: int = Field(ge=1, le=50)
     special_requests: str | None = Field(default=None, max_length=2000)
+    payment: DepositPaymentIn | None = None
 
     @model_validator(mode="after")
     def end_after_start(self) -> "ReservationCreate":
@@ -48,6 +57,9 @@ class ReservationOut(BaseModel):
     status: ReservationStatus
     source: ReservationSource
     special_requests: str | None
+    deposit_amount: Decimal | None
+    deposit_currency: str | None
+    deposit_status: DepositStatus
     created_at: datetime
 
 

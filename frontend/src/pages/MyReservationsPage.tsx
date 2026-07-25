@@ -26,7 +26,10 @@ export function MyReservationsPage() {
       {loading && <p className="muted">Loading…</p>}
 
       {data && data.items.length === 0 && (
-        <p className="muted">No reservations yet — browse restaurants to book a table.</p>
+        <div className="empty">
+          <h2>No reservations yet</h2>
+          <p className="muted">Browse restaurants to book your first table.</p>
+        </div>
       )}
 
       {data && data.items.length > 0 && (
@@ -38,6 +41,7 @@ export function MyReservationsPage() {
                 <th>Until</th>
                 <th>Party</th>
                 <th>Status</th>
+                <th>Deposit</th>
                 <th />
               </tr>
             </thead>
@@ -51,6 +55,15 @@ export function MyReservationsPage() {
                     <td>{r.party_size}</td>
                     <td>
                       <span className={`badge ${r.status}`}>{r.status.replace("_", " ")}</span>
+                    </td>
+                    <td>
+                      {r.deposit_status !== "none" ? (
+                        <span className={`badge ${r.deposit_status}`} title="Deposits are refunded when you cancel">
+                          {r.deposit_amount} {r.deposit_currency} · {r.deposit_status}
+                        </span>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
                     </td>
                     <td>
                       {cancellable && (

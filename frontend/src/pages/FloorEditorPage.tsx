@@ -23,6 +23,7 @@ import type {
   TableShape,
 } from "../api/types";
 import { FloorCanvas, type ElementGeom } from "../components/FloorCanvas";
+import { RestaurantSettingsPanel } from "../components/RestaurantSettingsPanel";
 import { useApi } from "../hooks/useApi";
 import { useMyRestaurants } from "../hooks/useMyRestaurants";
 
@@ -53,7 +54,7 @@ const LABELLED_TYPES: ElementType[] = ["entrance", "restroom", "bar", "kitchen",
 
 export function FloorEditorPage() {
   const { restaurants, selected, selectedId, setSelectedId, loading } = useMyRestaurants();
-  const [tab, setTab] = useState<"layout" | "hours">("layout");
+  const [tab, setTab] = useState<"layout" | "hours" | "settings">("layout");
 
   if (loading) return <p className="muted">Loading…</p>;
   if (restaurants.length === 0) {
@@ -80,10 +81,17 @@ export function FloorEditorPage() {
           <button className={tab === "hours" ? "primary" : ""} onClick={() => setTab("hours")}>
             Opening hours
           </button>
+          <button
+            className={tab === "settings" ? "primary" : ""}
+            onClick={() => setTab("settings")}
+          >
+            Settings
+          </button>
         </div>
       </div>
       {selectedId && tab === "layout" && <LayoutEditor restaurantId={selectedId} />}
       {selectedId && tab === "hours" && <HoursEditor restaurantId={selectedId} />}
+      {selectedId && tab === "settings" && <RestaurantSettingsPanel restaurantId={selectedId} />}
     </>
   );
 }

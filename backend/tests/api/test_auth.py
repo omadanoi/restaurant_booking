@@ -39,6 +39,25 @@ async def test_register_duplicate_email_conflict(client: AsyncClient) -> None:
     assert resp.status_code == 409
 
 
+async def test_email_is_case_insensitive(client: AsyncClient) -> None:
+    """Browsers auto-capitalize inputs; Alice@… and alice@… are one mailbox."""
+    mixed = {**REGISTER_BODY, "email": "Alice@Example.com"}
+    resp = await client.post(f"{AUTH}/register", json=mixed)
+    assert resp.status_code == 201
+    assert resp.json()["email"] == "alice@example.com"  # stored canonically
+
+    # Login works regardless of the casing typed.
+    resp = await client.post(
+        f"{AUTH}/login",
+        data={"username": "ALICE@EXAMPLE.COM", "password": REGISTER_BODY["password"]},
+    )
+    assert resp.status_code == 200, resp.text
+
+    # And a differently-cased duplicate registration is rejected.
+    resp = await client.post(f"{AUTH}/register", json=REGISTER_BODY)
+    assert resp.status_code == 409
+
+
 async def test_register_rejects_invalid_email_and_short_password(client: AsyncClient) -> None:
     bad_email = {**REGISTER_BODY, "email": "not-an-email"}
     assert (await client.post(f"{AUTH}/register", json=bad_email)).status_code == 422

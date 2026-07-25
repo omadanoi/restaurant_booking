@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     NOTIFICATION_SENDER: str = "logged"
     REMINDER_LEAD_HOURS: int = 24
 
+    # Booking-deposit payments. "demo" settles instantly with no external
+    # calls; a real provider (planned: a Kyrgyz PSP) plugs in via the same
+    # setting without touching call sites — see app/payments/base.py.
+    PAYMENT_PROVIDER: str = "demo"
+
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

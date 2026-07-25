@@ -8,11 +8,11 @@ A production-style full-stack reservation system: customers book specific tables
 
 ## Features
 
-**Customers** — browse restaurants, search availability by date/time/party size (with indoor/outdoor and accessibility filters), pick a table on a live floor plan rendered from database geometry, book it, modify or cancel later, and get confirmations and reminders in a notification feed.
+**Customers** — browse restaurants on a map or grid, search availability by date/time/party size (with indoor/outdoor and accessibility filters), pick a table on a live floor plan rendered from database geometry, book it (paying a deposit when the restaurant requires one — refunded on cancellation, forfeited on no-show), modify or cancel later, and get confirmations and reminders in a notification feed.
 
 **Waiters** — a live dashboard where the floor plan updates over WebSockets the moment anything changes: seat walk-ins, mark tables as cleaning or free, and work the day's reservation book (confirm → seat → complete / no-show, with illegal transitions rejected).
 
-**Managers** — everything waiters have, plus a drag-and-drop floor editor (move, rotate, add, remove tables; every change persists to the database and broadcasts live) and per-day opening hours and holiday configuration.
+**Managers** — everything waiters have, plus a drag-and-drop floor editor (move, rotate, add, remove tables; every change persists to the database and broadcasts live), per-day opening hours and holiday configuration, an optional per-restaurant booking deposit (amount and currency they control, charged through a pluggable payment-provider abstraction with a demo provider today), and a click-to-place map pin for their restaurant's location.
 
 **Admins** — create and suspend restaurants, manage users, global access across all restaurants.
 
@@ -96,7 +96,7 @@ All seeded with password `Password123`:
 ## Testing
 
 ```bash
-cd backend && pytest              # 85 tests: unit, API, integration
+cd backend && pytest              # 94 tests: unit, API, integration
 cd backend && ruff check .        # lint
 cd frontend && npx playwright test  # 9 browser E2E tests (needs seeded data)
 ```

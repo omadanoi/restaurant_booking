@@ -17,7 +17,12 @@ export function NotificationsPage() {
       <h1>Notifications</h1>
       {error && <div className="error">{error}</div>}
       {loading && <p className="muted">Loading…</p>}
-      {data && data.items.length === 0 && <p className="muted">Nothing here yet.</p>}
+      {data && data.items.length === 0 && (
+        <div className="empty">
+          <h2>Nothing here yet</h2>
+          <p className="muted">Booking confirmations and reminders will appear here.</p>
+        </div>
+      )}
 
       <div className="grid">
         {data?.items.map((n) => {

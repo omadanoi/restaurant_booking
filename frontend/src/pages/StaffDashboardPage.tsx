@@ -198,6 +198,7 @@ export function StaffDashboardPage() {
                 <th>Table</th>
                 <th>Party</th>
                 <th>Status</th>
+                <th>Deposit</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -222,6 +223,15 @@ export function StaffDashboardPage() {
                     <td>{r.party_size}</td>
                     <td>
                       <span className={`badge ${r.status}`}>{r.status.replace("_", " ")}</span>
+                    </td>
+                    <td>
+                      {r.deposit_status !== "none" ? (
+                        <span className={`badge ${r.deposit_status}`}>
+                          {r.deposit_amount} {r.deposit_currency} · {r.deposit_status}
+                        </span>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
                     </td>
                     <td>
                       <div className="row">

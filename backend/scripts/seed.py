@@ -14,6 +14,7 @@ Demo accounts (password for all: Password123):
 
 import asyncio
 from datetime import time
+from decimal import Decimal
 
 from sqlalchemy import select
 
@@ -113,6 +114,11 @@ async def seed() -> None:
                 cuisine_type="Italian",
                 phone="+1-555-0100",
                 email="hello@trattoria-demo.test",
+                deposit_enabled=True,
+                deposit_amount=Decimal("15.00"),
+                deposit_currency="USD",
+                latitude=39.7817,
+                longitude=-89.6501,
             )
             db.add(restaurant)
             await db.flush()
@@ -170,6 +176,16 @@ async def seed() -> None:
                     )
                 )
             print(f"created 2 floors and {len(TABLES)} tables")
+
+        # Deposit config + map pin — backfilled idempotently so an already-seeded
+        # database (created before this feature) gets them on a re-run.
+        if restaurant.latitude is None:
+            restaurant.deposit_enabled = True
+            restaurant.deposit_amount = Decimal("15.00")
+            restaurant.deposit_currency = "USD"
+            restaurant.latitude = 39.7817
+            restaurant.longitude = -89.6501
+            print("backfilled deposit config and map coordinates")
 
         # Layout elements — seeded idempotently on their own so an already-seeded
         # demo database (created before this feature) gets them on a re-run.

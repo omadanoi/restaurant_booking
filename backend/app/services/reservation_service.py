@@ -14,12 +14,17 @@ from app.core.exceptions import (
 from app.core.logging import get_logger
 from app.models import AuditLog, Notification, Reservation, Restaurant, Table, User
 from app.models.enums import (
+    DepositStatus,
     NotificationChannel,
     NotificationStatus,
     NotificationType,
+    PaymentKind,
+    PaymentStatus,
     ReservationStatus,
 )
+from app.payments.provider import get_payment_provider
 from app.realtime.events import queue_event
+from app.repositories.payment import PaymentRepository
 from app.repositories.reservation import ReservationRepository
 from app.repositories.restaurant import RestaurantRepository
 from app.repositories.table import TableRepository
@@ -48,6 +53,7 @@ class ReservationService:
         self.reservations = ReservationRepository(db)
         self.tables = TableRepository(db)
         self.restaurants = RestaurantRepository(db)
+        self.payments = PaymentRepository(db)
 
     # -- booking --------------------------------------------------------------
 
@@ -79,6 +85,30 @@ class ReservationService:
         if overlapping:
             raise OverlappingReservationError()
 
+        # Deposit: charged synchronously inside this transaction. The demo
+        # provider has no external side effects, so a rollback (e.g. the
+        # EXCLUDE constraint firing below) cleanly discards everything. A
+        # real provider inverts the flow — see app/payments/base.py.
+        deposit_fields: dict = {}
+        charge = None
+        deposit_due = (
+            restaurant.deposit_enabled
+            and restaurant.deposit_amount is not None
+            and restaurant.deposit_amount > 0
+        )
+        if deposit_due:
+            charge = get_payment_provider().create_charge(
+                amount=restaurant.deposit_amount,
+                currency=restaurant.deposit_currency,
+                reservation_ref=f"{table.id}:{data.start_time.isoformat()}",
+                card_number=data.payment.card_number if data.payment else None,
+            )
+            deposit_fields = {
+                "deposit_amount": restaurant.deposit_amount,
+                "deposit_currency": restaurant.deposit_currency,
+                "deposit_status": DepositStatus.PAID,
+            }
+
         try:
             reservation = await self.reservations.create(
                 {
@@ -90,12 +120,26 @@ class ReservationService:
                     "party_size": data.party_size,
                     "special_requests": data.special_requests,
                     "status": ReservationStatus.CONFIRMED,
+                    **deposit_fields,
                 }
             )
         except IntegrityError as exc:
             if "ex_reservations_no_overlap" in str(exc.orig):
                 raise OverlappingReservationError() from exc
             raise
+
+        if charge is not None:
+            await self.payments.create(
+                {
+                    "reservation_id": reservation.id,
+                    "kind": PaymentKind.CHARGE,
+                    "status": PaymentStatus.SUCCEEDED,
+                    "amount": reservation.deposit_amount,
+                    "currency": reservation.deposit_currency,
+                    "provider": get_payment_provider().name,
+                    "provider_txn_id": charge.provider_txn_id,
+                }
+            )
 
         await self._audit(customer, "reservation.created", reservation)
         self._queue_reservation_event("reservation.created", reservation)
@@ -180,6 +224,7 @@ class ReservationService:
             reservation,
             {"status": ReservationStatus.CANCELLED, "cancelled_at": datetime.now(UTC)},
         )
+        await self._refund_deposit_if_paid(reservation)
         await self._audit(actor, "reservation.cancelled", reservation, before=before)
         self._queue_reservation_event("reservation.cancelled", reservation)
         self._queue_notification(NotificationType.RESERVATION_CANCELLED, reservation)
@@ -209,7 +254,17 @@ class ReservationService:
             updates["confirmed_by"] = staff.id
         if new_status == ReservationStatus.CANCELLED:
             updates["cancelled_at"] = datetime.now(UTC)
+        if (
+            new_status == ReservationStatus.NO_SHOW
+            and reservation.deposit_status == DepositStatus.PAID
+        ):
+            # The whole point of the deposit: no-shows forfeit it. No
+            # provider call — the money was already captured at booking.
+            updates["deposit_status"] = DepositStatus.FORFEITED
         reservation = await self.reservations.update(reservation, updates)
+        if new_status == ReservationStatus.CANCELLED:
+            # Staff cancellations refund exactly like customer ones.
+            await self._refund_deposit_if_paid(reservation)
         await self._audit(staff, f"reservation.{new_status.value}", reservation, before=before)
         self._queue_reservation_event("reservation.updated", reservation)
         return reservation
@@ -254,6 +309,42 @@ class ReservationService:
         return [t for t in tables if fits(t)]
 
     # -- internals ------------------------------------------------------------
+
+    async def _refund_deposit_if_paid(self, reservation: Reservation) -> None:
+        """Full refund of a paid deposit; no-op otherwise.
+
+        Called from BOTH cancellation paths (customer cancel and staff
+        status-change). No cancellation-cutoff policy yet — that business
+        knob belongs with the real payment provider phase.
+        """
+        if reservation.deposit_status != DepositStatus.PAID:
+            return
+        original = await self.payments.latest_charge(reservation.id)
+        if original is None:
+            logger.warning(
+                "deposit_refund_missing_charge",
+                extra={"extra_fields": {"reservation_id": str(reservation.id)}},
+            )
+            return
+        refund = get_payment_provider().refund(
+            provider_txn_id=original.provider_txn_id,
+            amount=original.amount,
+            currency=original.currency,
+        )
+        await self.reservations.update(
+            reservation, {"deposit_status": DepositStatus.REFUNDED}
+        )
+        await self.payments.create(
+            {
+                "reservation_id": reservation.id,
+                "kind": PaymentKind.REFUND,
+                "status": PaymentStatus.SUCCEEDED,
+                "amount": original.amount,
+                "currency": original.currency,
+                "provider": get_payment_provider().name,
+                "provider_txn_id": refund.provider_txn_id,
+            }
+        )
 
     async def _get_owned_or_staff(self, actor: User, reservation_id: uuid.UUID) -> Reservation:
         from app.core.permissions import check_restaurant_staff
@@ -339,6 +430,10 @@ class ReservationService:
             "party_size": reservation.party_size,
             "status": reservation.status.value,
         }
+        if reservation.deposit_status != DepositStatus.NONE:
+            payload["deposit_status"] = reservation.deposit_status.value
+            payload["deposit_amount"] = str(reservation.deposit_amount)
+            payload["deposit_currency"] = reservation.deposit_currency
         if event is not None:
             payload["event"] = event
         self.db.add(
@@ -374,6 +469,7 @@ class ReservationService:
             "end_time": reservation.end_time.isoformat(),
             "party_size": reservation.party_size,
             "status": reservation.status.value,
+            "deposit_status": reservation.deposit_status.value,
         }
 
     async def _audit(

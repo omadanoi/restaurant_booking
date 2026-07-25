@@ -13,6 +13,7 @@ import {
 } from "../api/endpoints";
 import type { DiningTable } from "../api/types";
 import { FloorCanvas, FloorLegend } from "../components/FloorCanvas";
+import { RestaurantMiniMap } from "../components/map/RestaurantMiniMap";
 import { useApi } from "../hooks/useApi";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -44,6 +45,8 @@ export function RestaurantDetailPage() {
   const [available, setAvailable] = useState<Set<string> | null>(null);
   const [selected, setSelected] = useState<DiningTable | null>(null);
   const [requests, setRequests] = useState("");
+  // Demo payment form; prefilled with the classic always-succeeds test card.
+  const [card, setCard] = useState({ number: "4242 4242 4242 4242", expiry: "", cvc: "" });
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -93,6 +96,11 @@ export function RestaurantDetailPage() {
     }
   }
 
+  const depositDue =
+    restaurant?.deposit_enabled && restaurant.deposit_amount
+      ? `${restaurant.deposit_amount} ${restaurant.deposit_currency}`
+      : null;
+
   async function book() {
     if (!selected) return;
     setBusy(true);
@@ -105,10 +113,13 @@ export function RestaurantDetailPage() {
         end_time: end.toISOString(),
         party_size: filters.partySize,
         special_requests: requests || undefined,
+        payment: depositDue ? { card_number: card.number } : undefined,
       });
       setMessage({
         kind: "success",
-        text: `Booked table ${selected.table_number} on ${filters.date} at ${filters.time}. See "My reservations".`,
+        text: depositDue
+          ? `Booked table ${selected.table_number} on ${filters.date} at ${filters.time} — ${depositDue} deposit paid (refunded if you cancel). See "My reservations".`
+          : `Booked table ${selected.table_number} on ${filters.date} at ${filters.time}. See "My reservations".`,
       });
       setSelected(null);
       setAvailable(null);
@@ -143,6 +154,12 @@ export function RestaurantDetailPage() {
             )
             .join(" · ")}
         </p>
+      )}
+
+      {restaurant.latitude !== null && restaurant.longitude !== null && (
+        <div className="card map-card" style={{ margin: "1rem 0" }}>
+          <RestaurantMiniMap lat={restaurant.latitude} lng={restaurant.longitude} />
+        </div>
       )}
 
       <div className="card" style={{ margin: "1rem 0" }}>
@@ -250,8 +267,53 @@ export function RestaurantDetailPage() {
               onChange={(e) => setRequests(e.target.value)}
               style={{ flex: 1, minWidth: "240px" }}
             />
+          </div>
+          {depositDue && (
+            <div className="deposit-box">
+              <p>
+                <strong>{depositDue} deposit</strong> — fully refunded if you cancel, kept by
+                the restaurant if you don't show up.
+              </p>
+              <div className="row">
+                <label className="field" style={{ flex: 2, minWidth: "180px" }}>
+                  Card number
+                  <input
+                    value={card.number}
+                    onChange={(e) => setCard((c) => ({ ...c, number: e.target.value }))}
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="field" style={{ width: "6rem" }}>
+                  MM/YY
+                  <input
+                    placeholder="12/28"
+                    value={card.expiry}
+                    onChange={(e) => setCard((c) => ({ ...c, expiry: e.target.value }))}
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="field" style={{ width: "5rem" }}>
+                  CVC
+                  <input
+                    placeholder="123"
+                    value={card.cvc}
+                    onChange={(e) => setCard((c) => ({ ...c, cvc: e.target.value }))}
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
+              <p className="muted" style={{ marginTop: "0.25rem" }}>
+                Demo payments — no real charge. Any card works; one ending in 0002 is declined.
+              </p>
+            </div>
+          )}
+          <div className="row" style={{ marginTop: "0.75rem" }}>
             <button className="primary" onClick={book} disabled={busy}>
-              {busy ? "Booking…" : `Confirm for ${filters.date} ${filters.time}`}
+              {busy
+                ? "Booking…"
+                : depositDue
+                  ? `Pay ${depositDue} & confirm for ${filters.date} ${filters.time}`
+                  : `Confirm for ${filters.date} ${filters.time}`}
             </button>
           </div>
         </div>

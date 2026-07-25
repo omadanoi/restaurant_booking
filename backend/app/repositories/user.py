@@ -8,7 +8,12 @@ class UserRepository(BaseRepository[User]):
     model = User
 
     async def get_by_email(self, email: str) -> User | None:
-        result = await self.db.execute(select(User).where(User.email == email))
+        """Case-insensitive: browsers auto-capitalize inputs, and
+        Customer@demo.com and customer@demo.com are the same mailbox.
+        """
+        result = await self.db.execute(
+            select(User).where(func.lower(User.email) == email.strip().lower())
+        )
         return result.scalar_one_or_none()
 
     async def count(self) -> int:
