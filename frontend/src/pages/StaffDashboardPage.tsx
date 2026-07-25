@@ -197,6 +197,7 @@ export function StaffDashboardPage() {
                 <th>Time</th>
                 <th>Table</th>
                 <th>Party</th>
+                <th>Requests</th>
                 <th>Status</th>
                 <th>Deposit</th>
                 <th>Actions</th>
@@ -221,6 +222,9 @@ export function StaffDashboardPage() {
                     </td>
                     <td>{tableNumber}</td>
                     <td>{r.party_size}</td>
+                    <td className="req-cell" title={r.special_requests ?? undefined}>
+                      {r.special_requests ?? <span className="muted">—</span>}
+                    </td>
                     <td>
                       <span className={`badge ${r.status}`}>{r.status.replace("_", " ")}</span>
                     </td>

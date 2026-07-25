@@ -40,6 +40,7 @@ export function MyReservationsPage() {
                 <th>When</th>
                 <th>Until</th>
                 <th>Party</th>
+                <th>Requests</th>
                 <th>Status</th>
                 <th>Deposit</th>
                 <th />
@@ -53,6 +54,9 @@ export function MyReservationsPage() {
                     <td>{new Date(r.start_time).toLocaleString()}</td>
                     <td>{new Date(r.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
                     <td>{r.party_size}</td>
+                    <td className="req-cell" title={r.special_requests ?? undefined}>
+                      {r.special_requests ?? <span className="muted">—</span>}
+                    </td>
                     <td>
                       <span className={`badge ${r.status}`}>{r.status.replace("_", " ")}</span>
                     </td>
